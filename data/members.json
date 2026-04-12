@@ -1,9 +1,65 @@
 [
-  { "code": "A001", "name": "株式会社中村" },
-  { "code": "A002", "name": "株式会社〇〇教育" },
-  { "code": "A003", "name": "有限会社山田学習塾" },
-  { "code": "A004", "name": "田中学習塾（個人事業）" },
-  { "code": "A005", "name": "学校法人サンプル学園" },
-  { "code": "B001", "name": "株式会社明光学院" },
-  { "code": "B002", "name": "合同会社東京進学塾" }
+  {
+    "memberCode": "A001",
+    "companyName": "株式会社中村",
+    "contactName": "中村 一郎",
+    "contactEmail": "ichiro@nakamura-juku.jp",
+    "status": "active",
+    "registeredAt": "2025-04-01",
+    "note": ""
+  },
+  {
+    "memberCode": "A002",
+    "companyName": "株式会社〇〇教育",
+    "contactName": "佐藤 花子",
+    "contactEmail": "hanako@xx-kyoiku.jp",
+    "status": "active",
+    "registeredAt": "2025-04-01",
+    "note": ""
+  },
+  {
+    "memberCode": "A003",
+    "companyName": "有限会社山田学習塾",
+    "contactName": "山田 次郎",
+    "contactEmail": "jiro@yamada-juku.jp",
+    "status": "active",
+    "registeredAt": "2025-04-01",
+    "note": ""
+  },
+  {
+    "memberCode": "A004",
+    "companyName": "田中学習塾（個人事業）",
+    "contactName": "田中 三郎",
+    "contactEmail": "tanaka@tanaka-juku.jp",
+    "status": "active",
+    "registeredAt": "2025-05-10",
+    "note": ""
+  },
+  {
+    "memberCode": "A005",
+    "companyName": "学校法人サンプル学園",
+    "contactName": "鈴木 四郎",
+    "contactEmail": "suzuki@sample-gakuen.jp",
+    "status": "active",
+    "registeredAt": "2025-06-01",
+    "note": ""
+  },
+  {
+    "memberCode": "B001",
+    "companyName": "株式会社明光学院",
+    "contactName": "高橋 五郎",
+    "contactEmail": "takahashi@meiko.jp",
+    "status": "active",
+    "registeredAt": "2025-09-01",
+    "note": ""
+  },
+  {
+    "memberCode": "B002",
+    "companyName": "合同会社東京進学塾",
+    "contactName": "伊藤 六子",
+    "contactEmail": "ito@tokyo-shingaku.jp",
+    "status": "inactive",
+    "registeredAt": "2025-10-15",
+    "note": "退会済み（2026年3月）"
+  }
 ]

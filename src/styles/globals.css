@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply text-gray-800 bg-gray-50;
+    @apply text-gray-800 bg-green-50;
     font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', sans-serif;
   }
 }
@@ -13,7 +13,6 @@
    修了証 印刷用スタイル
    ============================== */
 @media print {
-  /* 印刷時は修了証エリア以外を非表示 */
   body * {
     visibility: hidden;
   }
@@ -28,21 +27,7 @@
     width: 100%;
     padding: 40px;
   }
-  /* 印刷時に不要なUIを非表示 */
   .no-print {
     display: none !important;
   }
-}
-
-/* ==============================
-   ステッパー（進捗バー）
-   ============================== */
-.step-active {
-  @apply font-semibold text-blue-900;
-}
-.step-done {
-  @apply text-green-600;
-}
-.step-pending {
-  @apply text-gray-400;
 }
