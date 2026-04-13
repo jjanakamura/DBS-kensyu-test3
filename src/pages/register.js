@@ -17,15 +17,18 @@ export default function Register() {
   const [classroomLocked, setClassroomLocked] = useState(false);
   const [errors, setErrors] = useState({});
   const [urlParamsApplied, setUrlParamsApplied] = useState(false);
+  const [track, setTrack] = useState('general'); // 'general' | 'manager'
 
-  // URLパラメータ ?biz=A001&cls=A001-C01 の自動処理
+  // URLパラメータ ?biz=A001&cls=A001-C01&track=manager の自動処理
   useEffect(() => {
     if (!router.isReady || urlParamsApplied) return;
     const biz = router.query.biz ? String(router.query.biz).trim().toUpperCase() : '';
     const cls = router.query.cls ? String(router.query.cls).trim().toUpperCase() : '';
+    const trk = router.query.track === 'manager' ? 'manager' : 'general';
     if (!biz) return;
 
     setUrlParamsApplied(true);
+    setTrack(trk);
     setForm((prev) => ({ ...prev, operatorCode: biz }));
     if (cls) setClassroomCode(cls);
     lookupOperator(biz, cls || null);
@@ -95,6 +98,7 @@ export default function Register() {
       classroomName: form.classroomName.trim(),
       fullName: form.fullName.trim(),
       email: form.email.trim(),
+      track: track || 'general',
     }));
     router.push('/video');
   };
@@ -106,6 +110,7 @@ export default function Register() {
 
   const hasUrlBiz = !!router.query.biz;
   const hasUrlCls = !!router.query.cls;
+  const isManager = track === 'manager';
 
   return (
     <Layout title="基本情報入力">
@@ -116,6 +121,14 @@ export default function Register() {
           <span className="mx-1">›</span><span>③ 確認テスト</span>
           <span className="mx-1">›</span><span>④ 修了証</span>
         </div>
+
+        {/* 情報管理責任者コース案内バナー */}
+        {isManager && (
+          <div className="bg-amber-50 border border-amber-300 rounded-lg px-4 py-3 mb-4 text-xs text-amber-900">
+            <p className="font-bold mb-0.5">📋 情報管理責任者研修コース</p>
+            <p>このURLは<strong>情報管理責任者向け</strong>の研修コースです。情報管理規程を含む専用の研修動画・確認テストが提供されます。</p>
+          </div>
+        )}
 
         <h1 className="text-xl font-bold text-gray-900 mb-1">基本情報の入力</h1>
         <p className="text-sm text-gray-500 mb-6">以下の項目をすべて正確に入力してください。<span className="text-red-500">*</span> は必須です。</p>

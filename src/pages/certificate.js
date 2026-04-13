@@ -37,6 +37,7 @@ export default function CertificatePage() {
               classroomName: r.classroomName || '',
               fullName: r.fullName || '',
               email: r.email || '',
+              track: r.track || 'general',
             });
             setResult({
               passed: true,
@@ -95,6 +96,22 @@ export default function CertificatePage() {
   if (!trainee || !result) return null;
 
   const { completionDate, certNumber } = result;
+  const isManager = trainee.track === 'manager';
+
+  // コース別設定
+  const certConfig = isManager
+    ? {
+        pageTitle: isReissue ? '修了証（再発行）' : '修了証',
+        certTitle: '修 了 証',
+        trainingName: 'こども性暴力防止法（日本版DBS）情報管理責任者研修',
+        bodyText: '上記の者は、こども性暴力防止法（日本版DBS）に関する情報管理責任者向け研修を受講し、\n所定の確認テストに合格したことを証します。',
+      }
+    : {
+        pageTitle: isReissue ? '修了証（再発行）' : '修了証',
+        certTitle: '修 了 証',
+        trainingName: 'こども性暴力防止法（日本版DBS）対応研修',
+        bodyText: '上記の者は、こども性暴力防止法（日本版DBS）に関する研修を受講し、\n所定の確認テストに合格したことを証します。',
+      };
 
   return (
     <Layout title="修了証">
@@ -114,7 +131,7 @@ export default function CertificatePage() {
 
         <div className="mb-6">
           <h1 className="text-xl font-bold text-gray-900 mb-1">
-            {isReissue ? '修了証（再発行）' : '修了証'}
+            {isReissue ? `${certConfig.pageTitle}` : certConfig.pageTitle}
           </h1>
           <p className="text-sm text-gray-500">
             {isReissue
@@ -146,9 +163,14 @@ export default function CertificatePage() {
             <div style={{ textAlign: 'center', paddingTop: '2%' }}>
               <div style={{ display: 'inline-block', borderTop: '2px solid #166534', borderBottom: '2px solid #166534', padding: '8px 48px' }}>
                 <h2 style={{ fontSize: 'clamp(22px, 4.5vw, 36px)', fontWeight: 'bold', color: '#14532d', letterSpacing: '0.35em', margin: 0 }}>
-                  修 了 証
+                  {certConfig.certTitle}
                 </h2>
               </div>
+              {isManager && (
+                <p style={{ fontSize: 'clamp(9px, 1.3vw, 11px)', color: '#92400e', fontWeight: 'bold', letterSpacing: '0.15em', marginTop: '6px' }}>
+                  情報管理責任者研修
+                </p>
+              )}
             </div>
 
             {/* 受講者情報 */}
@@ -172,12 +194,13 @@ export default function CertificatePage() {
               <p style={{ fontSize: '10px', color: '#166534', fontWeight: 'bold', letterSpacing: '0.3em', marginBottom: '6px' }}>研　修　名</p>
               <div style={{ display: 'inline-block', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '4px', padding: '6px 24px', marginBottom: '14px' }}>
                 <p style={{ fontSize: 'clamp(11px, 1.8vw, 15px)', fontWeight: 'bold', color: '#14532d', margin: 0 }}>
-                  こども性暴力防止法（日本版DBS）対応研修
+                  {certConfig.trainingName}
                 </p>
               </div>
               <p style={{ fontSize: 'clamp(10px, 1.5vw, 13px)', color: '#374151', lineHeight: '1.8' }}>
-                上記の者は、こども性暴力防止法（日本版DBS）に関する研修を受講し、<br />
-                所定の確認テストに合格したことを証します。
+                {certConfig.bodyText.split('\n').map((line, i, arr) => (
+                  <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
+                ))}
               </p>
             </div>
 

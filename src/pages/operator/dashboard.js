@@ -59,6 +59,7 @@ export default function OperatorDashboard() {
   const hqUrl = hqClassroom
     ? `${getBaseUrl()}/register?biz=${auth.operatorCode}&cls=${hqClassroom.classroomCode}`
     : `${getBaseUrl()}/register?biz=${auth.operatorCode}`;
+  const managerUrl = `${getBaseUrl()}/register?biz=${auth.operatorCode}&cls=${auth.operatorCode}-HQ&track=manager`;
 
   return (
     <Layout title="事業者管理画面">
@@ -97,14 +98,27 @@ export default function OperatorDashboard() {
           </div>
         </div>
 
-        {/* 本部専用URLバナー */}
-        <div className="bg-green-50 border border-green-300 rounded-xl px-5 py-4 mb-6 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-bold text-green-800 mb-0.5">🏢 本部スタッフ向け受講URL</p>
-            <p className="text-xs text-green-700">教室に所属しない本部・事務局スタッフはこちらのURLから受講できます。</p>
-            <p className="text-xs font-mono text-green-600 mt-1 break-all">{hqUrl}</p>
+        {/* 本部スタッフ向けURL + 情報管理責任者URL */}
+        <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2">
+          {/* 本部スタッフ向け一般研修URL */}
+          <div className="bg-green-50 border border-green-300 rounded-xl px-5 py-4 flex flex-col gap-3">
+            <div>
+              <p className="text-sm font-bold text-green-800 mb-0.5">🏢 本部スタッフ向け受講URL</p>
+              <p className="text-xs text-green-700">教室に所属しない本部・事務局スタッフ（一般研修）はこちらのURLから受講できます。</p>
+              <p className="text-xs font-mono text-green-600 mt-1 break-all">{hqUrl}</p>
+            </div>
+            <HqCopyButton url={hqUrl} label="本部URLをコピー" />
           </div>
-          <HqCopyButton url={hqUrl} />
+
+          {/* 情報管理責任者向け研修URL */}
+          <div className="bg-amber-50 border border-amber-300 rounded-xl px-5 py-4 flex flex-col gap-3">
+            <div>
+              <p className="text-sm font-bold text-amber-800 mb-0.5">📋 情報管理責任者向け受講URL</p>
+              <p className="text-xs text-amber-700">情報管理責任者に指定された方はこちらのURLから専用研修を受講してください。</p>
+              <p className="text-xs font-mono text-amber-600 mt-1 break-all">{managerUrl}</p>
+            </div>
+            <HqCopyButton url={managerUrl} label="責任者URLをコピー" colorClass="amber" />
+          </div>
         </div>
 
         {/* タブ */}
@@ -197,6 +211,7 @@ export default function OperatorDashboard() {
                         <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">氏名</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">メール</th>
                         <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">得点</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">研修種別</th>
                         <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">合否</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">修了日</th>
                       </tr>
@@ -212,6 +227,12 @@ export default function OperatorDashboard() {
                           <td className="px-4 py-3 text-xs font-medium text-gray-900 whitespace-nowrap">{r.fullName || '—'}</td>
                           <td className="px-4 py-3 text-xs text-gray-600">{r.email || '—'}</td>
                           <td className="px-4 py-3 text-xs text-center font-semibold">{r.score != null ? `${r.score}%` : '—'}</td>
+                          <td className="px-4 py-3 text-center">
+                            {r.track === 'manager'
+                              ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">情報管理</span>
+                              : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">一般</span>
+                            }
+                          </td>
                           <td className="px-4 py-3 text-center">
                             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${r.passed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'}`}>
                               {r.passed ? '合格' : '不合格'}
@@ -240,16 +261,19 @@ export default function OperatorDashboard() {
   );
 }
 
-// 本部専用URLコピーボタン（大きめ）
-function HqCopyButton({ url }) {
+// URLコピーボタン（大きめ・カラー対応）
+function HqCopyButton({ url, label = 'URLをコピー', colorClass = 'green' }) {
   const [copied, setCopied] = useState(false);
+  const colors = colorClass === 'amber'
+    ? { active: 'bg-amber-600 text-white border-amber-600', idle: 'bg-white text-amber-700 border-amber-500 hover:bg-amber-50' }
+    : { active: 'bg-green-700 text-white border-green-700', idle: 'bg-white text-green-700 border-green-500 hover:bg-green-100' };
   return (
     <button
       onClick={() => { navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-      className={`flex-shrink-0 text-sm font-semibold px-4 py-2 rounded-lg border transition-colors whitespace-nowrap ${
-        copied ? 'bg-green-700 text-white border-green-700' : 'bg-white text-green-700 border-green-500 hover:bg-green-100'
+      className={`self-start text-sm font-semibold px-4 py-2 rounded-lg border transition-colors whitespace-nowrap ${
+        copied ? colors.active : colors.idle
       }`}>
-      {copied ? '✓ コピー済み' : '本部URLをコピー'}
+      {copied ? '✓ コピー済み' : label}
     </button>
   );
 }

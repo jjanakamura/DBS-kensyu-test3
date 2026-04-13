@@ -8,7 +8,10 @@ import Layout from '../components/Layout';
  * - 動画が終了するまで確認テストへは進めない
  */
 
-const VIDEO_ID = '6h4PtePGsEw';
+// 一般研修動画（プレースホルダー）
+const VIDEO_ID_GENERAL = '6h4PtePGsEw';
+// 情報管理責任者研修動画（プレースホルダー）
+const VIDEO_ID_MANAGER = '6h4PtePGsEw';
 
 export default function VideoPage() {
   const router = useRouter();
@@ -25,9 +28,11 @@ export default function VideoPage() {
     // YouTube IFrame API のプレーヤーを生成する関数
     const createPlayer = () => {
       if (playerRef.current) return; // 二重生成防止
+      const parsedTrainee = JSON.parse(sessionStorage.getItem('trainee') || '{}');
+      const videoId = parsedTrainee.track === 'manager' ? VIDEO_ID_MANAGER : VIDEO_ID_GENERAL;
 
       playerRef.current = new window.YT.Player('yt-player', {
-        videoId: VIDEO_ID,
+        videoId,
         playerVars: {
           rel: 0,
           modestbranding: 1,
@@ -76,6 +81,37 @@ export default function VideoPage() {
 
   if (!trainee) return null;
 
+  const isManager = trainee.track === 'manager';
+
+  // 研修コース別設定
+  const courseConfig = isManager
+    ? {
+        title: '情報管理責任者研修動画の視聴',
+        videoTitle: 'こども性暴力防止法（日本版DBS）情報管理責任者研修',
+        badge: { label: '情報管理責任者研修', cls: 'bg-amber-100 text-amber-800 border-amber-300' },
+        contents: [
+          '日本版DBS（こども性暴力防止法）の目的と概要',
+          '犯罪事実確認記録等の定義と取扱い上の義務',
+          '情報管理責任者の役割・権限と責任範囲',
+          '情報管理規程の策定・運用・PDCAサイクル',
+          '組織的・人的・物理的・技術的情報管理措置',
+          '情報漏えい発生時の報告義務と対応手順',
+          '廃棄・消去の適切な手続きと記録の保存',
+        ],
+      }
+    : {
+        title: '研修動画の視聴',
+        videoTitle: 'こども性暴力防止法（日本版DBS）対応研修',
+        badge: null,
+        contents: [
+          '日本版DBS（こども性暴力防止法）の目的と概要',
+          '確認申請の対象者（雇用形態を問わず子どもと接する全ての者）',
+          '申請のタイミングと手続きの流れ',
+          '義務不履行の場合の行政措置（改善命令・事業者名公表）',
+          '現場での実務対応ポイントとケーススタディ',
+        ],
+      };
+
   // 再生状態に応じたメッセージ
   const statusMessage = () => {
     if (playerState === 'ended') return { text: '✓ 動画の視聴が完了しました。確認テストへ進んでください。', cls: 'bg-green-50 border-green-300 text-green-800' };
@@ -100,7 +136,14 @@ export default function VideoPage() {
           <span>④ 修了証</span>
         </div>
 
-        <h1 className="text-xl font-bold text-gray-900 mb-1">研修動画の視聴</h1>
+        {/* 情報管理責任者コースバッジ */}
+        {isManager && (
+          <div className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border mb-4 ${courseConfig.badge.cls}`}>
+            📋 情報管理責任者研修コース
+          </div>
+        )}
+
+        <h1 className="text-xl font-bold text-gray-900 mb-1">{courseConfig.title}</h1>
         <p className="text-sm text-gray-500 mb-4">
           動画を<strong>最後まで視聴</strong>すると確認テストへ進めます。
         </p>
@@ -123,7 +166,7 @@ export default function VideoPage() {
             />
           </div>
           <div className="p-4 border-t border-green-100">
-            <p className="text-sm font-bold text-gray-800">こども性暴力防止法（日本版DBS）対応研修</p>
+            <p className="text-sm font-bold text-gray-800">{courseConfig.videoTitle}</p>
             <p className="text-xs text-gray-500 mt-0.5">公益社団法人全国学習塾協会（JJA）制作</p>
           </div>
         </div>
@@ -137,13 +180,7 @@ export default function VideoPage() {
         <div className="bg-white rounded-xl shadow-sm border border-green-200 p-5 mb-5">
           <h3 className="text-sm font-bold text-gray-800 mb-3">研修内容</h3>
           <ul className="space-y-2 text-sm text-gray-700">
-            {[
-              '日本版DBS（こども性暴力防止法）の目的と概要',
-              '確認申請の対象者（雇用形態を問わず子どもと接する全ての者）',
-              '申請のタイミングと手続きの流れ',
-              '義務不履行の場合の行政措置（改善命令・事業者名公表）',
-              '現場での実務対応ポイントとケーススタディ',
-            ].map((item, i) => (
+            {courseConfig.contents.map((item, i) => (
               <li key={i} className="flex gap-2">
                 <span className="text-green-700 font-bold flex-shrink-0">●</span>
                 {item}

@@ -38,7 +38,7 @@ function prepareQuestions(allQuestions) {
   });
 }
 
-export default function TestPage({ questions }) {
+export default function TestPage({ questions, questionsManager }) {
   const router = useRouter();
   const [trainee, setTrainee] = useState(null);
   const [prepared, setPrepared] = useState([]);
@@ -48,8 +48,10 @@ export default function TestPage({ questions }) {
   useEffect(() => {
     const stored = sessionStorage.getItem('trainee');
     if (!stored) { router.replace('/register'); return; }
-    setTrainee(JSON.parse(stored));
-    setPrepared(prepareQuestions(questions));
+    const parsedTrainee = JSON.parse(stored);
+    setTrainee(parsedTrainee);
+    const bank = parsedTrainee.track === 'manager' ? questionsManager : questions;
+    setPrepared(prepareQuestions(bank));
   }, []);
 
   const handleSubmit = async () => {
@@ -215,7 +217,7 @@ export default function TestPage({ questions }) {
 export async function getServerSideProps() {
   const path = require('path');
   const fs = require('fs');
-  const filePath = path.join(process.cwd(), 'data', 'questions.json');
-  const questions = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-  return { props: { questions } };
+  const questions = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'data', 'questions.json'), 'utf-8'));
+  const questionsManager = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'data', 'questions_manager.json'), 'utf-8'));
+  return { props: { questions, questionsManager } };
 }
