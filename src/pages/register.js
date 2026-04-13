@@ -225,7 +225,7 @@ export default function Register() {
                 className="mt-0.5 flex-shrink-0 w-4 h-4 accent-green-700"
               />
               <span className="text-sm text-gray-700 leading-relaxed">
-                私は、この研修を<strong>本人自身が受講</strong>していることを誓います。代理受講・なりすまし等の不正行為は、事業者規程に基づき対処されることを理解しています。
+                私は、この研修を<strong>本人自身が受講</strong>していることを誓います。
               </span>
             </label>
             {errors.pledged && <p className="mt-2 text-xs text-red-600">{errors.pledged}</p>}
