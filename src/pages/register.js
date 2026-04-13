@@ -18,6 +18,7 @@ export default function Register() {
   const [errors, setErrors] = useState({});
   const [urlParamsApplied, setUrlParamsApplied] = useState(false);
   const [track, setTrack] = useState('general'); // 'general' | 'manager'
+  const [pledged, setPledged] = useState(false);
 
   // URLパラメータ ?biz=A001&cls=A001-C01&track=manager の自動処理
   useEffect(() => {
@@ -82,8 +83,7 @@ export default function Register() {
     else if (codeStatus !== 'ok') errs.operatorCode = '有効な事業者コードを入力・照合してください。';
     if (!form.classroomName.trim()) errs.classroomName = '教室名を入力してください。';
     if (!form.fullName.trim()) errs.fullName = '氏名を入力してください。';
-    if (!form.email.trim()) errs.email = 'メールアドレスを入力してください。';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errs.email = 'メールアドレスの形式が正しくありません。';
+    if (!pledged) errs.pledged = '本人受講の誓約にチェックしてください。';
     return errs;
   };
 
@@ -97,7 +97,6 @@ export default function Register() {
       companyName,
       classroomName: form.classroomName.trim(),
       fullName: form.fullName.trim(),
-      email: form.email.trim(),
       track: track || 'general',
     }));
     router.push('/video');
@@ -216,13 +215,20 @@ export default function Register() {
             {errors.fullName && <p className="mt-1 text-xs text-red-600">{errors.fullName}</p>}
           </div>
 
-          {/* メールアドレス */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">メールアドレス <span className="text-red-500">*</span></label>
-            <input type="email" value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="例：yamada@example.com" className={inputClass('email')} />
-            {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
+          {/* 本人受講の誓約 */}
+          <div className={`rounded-lg border p-4 ${errors.pledged ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={pledged}
+                onChange={(e) => setPledged(e.target.checked)}
+                className="mt-0.5 flex-shrink-0 w-4 h-4 accent-green-700"
+              />
+              <span className="text-sm text-gray-700 leading-relaxed">
+                私は、この研修を<strong>本人自身が受講</strong>していることを誓います。代理受講・なりすまし等の不正行為は、事業者規程に基づき対処されることを理解しています。
+              </span>
+            </label>
+            {errors.pledged && <p className="mt-2 text-xs text-red-600">{errors.pledged}</p>}
           </div>
 
           <div className="pt-2">

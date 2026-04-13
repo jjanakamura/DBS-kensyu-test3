@@ -209,7 +209,6 @@ export default function OperatorDashboard() {
                         <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">教室コード</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">教室名</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">氏名</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">メール</th>
                         <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">得点</th>
                         <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">研修種別</th>
                         <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">合否</th>
@@ -225,7 +224,6 @@ export default function OperatorDashboard() {
                           <td className="px-4 py-3 font-mono text-xs text-gray-600">{r.classroomCode || '—'}</td>
                           <td className="px-4 py-3 text-xs text-gray-800 whitespace-nowrap">{r.classroomName || '—'}</td>
                           <td className="px-4 py-3 text-xs font-medium text-gray-900 whitespace-nowrap">{r.fullName || '—'}</td>
-                          <td className="px-4 py-3 text-xs text-gray-600">{r.email || '—'}</td>
                           <td className="px-4 py-3 text-xs text-center font-semibold">{r.score != null ? `${r.score}%` : '—'}</td>
                           <td className="px-4 py-3 text-center">
                             {r.track === 'manager'
