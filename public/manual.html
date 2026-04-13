@@ -2,1167 +2,398 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>操作マニュアル｜JJA 研修・修了証発行システム</title>
   <style>
-    @page {
-      size: A4 portrait;
-      margin: 15mm 15mm 18mm 15mm;
-    }
-
+    @page { size: A4 portrait; margin: 14mm 14mm 16mm 14mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo', sans-serif; font-size: 9pt; line-height: 1.6; color: #1a1a1a; background: #fff; }
 
-    body {
-      font-family: 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo', sans-serif;
-      font-size: 9.5pt;
-      line-height: 1.65;
-      color: #1a1a1a;
-      background: #fff;
-    }
-
-    /* ========== ページ区切り ========== */
-    .page {
-      width: 180mm;
-      min-height: 257mm;
-      margin: 0 auto 10mm;
-      padding: 0;
-      page-break-after: always;
-    }
+    .page { width: 182mm; min-height: 257mm; margin: 0 auto 8mm; page-break-after: always; }
     .page:last-child { page-break-after: auto; }
+    @media print { body { margin: 0; } .page { margin: 0; width: 100%; } }
 
-    @media print {
-      body { margin: 0; }
-      .page { margin: 0; width: 100%; }
-    }
+    /* 表紙 */
+    .cover { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 257mm; background: linear-gradient(160deg, #f0fdf4, #dcfce7); text-align: center; padding: 18mm; border: 2px solid #166534; }
+    .cover-org { font-size: 9pt; color: #166534; font-weight: bold; margin-bottom: 7mm; }
+    .cover-title { font-size: 21pt; font-weight: bold; color: #14532d; line-height: 1.4; margin-bottom: 5mm; }
+    .cover-sub { font-size: 12pt; color: #166534; font-weight: bold; border-top: 1px solid #86efac; border-bottom: 1px solid #86efac; padding: 2.5mm 8mm; margin-bottom: 10mm; }
+    .cover-tags { display: flex; gap: 2.5mm; flex-wrap: wrap; justify-content: center; margin-bottom: 12mm; }
+    .cover-tag { background: #166534; color: #fff; font-size: 8pt; font-weight: bold; padding: 1.5mm 4mm; border-radius: 20px; }
+    .cover-date { font-size: 8pt; color: #6b7280; margin-top: auto; }
 
-    /* ========== 表紙 ========== */
-    .cover {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      min-height: 257mm;
-      background: linear-gradient(160deg, #f0fdf4 0%, #dcfce7 100%);
-      text-align: center;
-      padding: 20mm;
-      border: 2px solid #166534;
-    }
-    .cover-logo {
-      font-size: 10pt;
-      color: #166534;
-      font-weight: bold;
-      letter-spacing: 0.1em;
-      margin-bottom: 8mm;
-    }
-    .cover-title {
-      font-size: 22pt;
-      font-weight: bold;
-      color: #14532d;
-      line-height: 1.4;
-      margin-bottom: 6mm;
-      letter-spacing: 0.05em;
-    }
-    .cover-subtitle {
-      font-size: 12pt;
-      color: #166534;
-      font-weight: bold;
-      margin-bottom: 12mm;
-      border-top: 1px solid #86efac;
-      border-bottom: 1px solid #86efac;
-      padding: 3mm 8mm;
-    }
-    .cover-desc {
-      font-size: 9pt;
-      color: #374151;
-      background: rgba(255,255,255,0.7);
-      border: 1px solid #bbf7d0;
-      border-radius: 6px;
-      padding: 5mm 8mm;
-      text-align: left;
-      max-width: 130mm;
-      margin-bottom: 12mm;
-    }
-    .cover-desc p { margin-bottom: 2mm; }
-    .cover-desc p:last-child { margin-bottom: 0; }
-    .cover-users {
-      display: flex;
-      gap: 3mm;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-bottom: 14mm;
-    }
-    .cover-user-tag {
-      background: #166534;
-      color: #fff;
-      font-size: 8.5pt;
-      font-weight: bold;
-      padding: 1.5mm 4mm;
-      border-radius: 20px;
-    }
-    .cover-date {
-      font-size: 8.5pt;
-      color: #6b7280;
-      margin-top: auto;
-    }
+    /* ヘッダー */
+    .ch-header { background: #166534; color: #fff; padding: 2.5mm 4mm; font-size: 11pt; font-weight: bold; border-radius: 3px; margin-bottom: 4mm; }
+    .ch-header small { font-size: 7.5pt; opacity: 0.8; display: block; margin-bottom: 0.3mm; }
+    .sec { font-size: 10pt; font-weight: bold; color: #14532d; border-left: 3px solid #16a34a; padding-left: 2.5mm; margin: 4mm 0 2mm; }
 
-    /* ========== セクションヘッダー ========== */
-    .section-header {
-      background: #166534;
-      color: #fff;
-      padding: 3mm 5mm;
-      font-size: 12pt;
-      font-weight: bold;
-      letter-spacing: 0.05em;
-      margin-bottom: 5mm;
-      border-radius: 4px;
-    }
-    .section-header .chapter-num {
-      font-size: 8pt;
-      opacity: 0.8;
-      display: block;
-      margin-bottom: 0.5mm;
-    }
+    /* ステップ */
+    .steps { list-style: none; }
+    .step { display: flex; gap: 2.5mm; margin-bottom: 3mm; align-items: flex-start; }
+    .snum { flex-shrink: 0; width: 5.5mm; height: 5.5mm; background: #166534; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 7.5pt; font-weight: bold; margin-top: 0.3mm; }
+    .stitle { font-weight: bold; font-size: 9pt; }
+    .sdesc { font-size: 8pt; color: #4b5563; }
 
-    .sub-section {
-      font-size: 10.5pt;
-      font-weight: bold;
-      color: #14532d;
-      border-left: 4px solid #16a34a;
-      padding-left: 3mm;
-      margin: 5mm 0 3mm;
-    }
+    /* 画面モック */
+    .mock { border: 1.5px solid #d1fae5; border-radius: 5px; overflow: hidden; margin: 2.5mm 0; background: #f9fafb; }
+    .mock-bar { background: #e8f5e9; border-bottom: 1px solid #d1fae5; padding: 1.2mm 3mm; font-size: 7pt; color: #166534; font-weight: bold; display: flex; justify-content: space-between; }
+    .mock-bar::before { content: "● ● ●"; font-size: 5.5pt; color: #86efac; margin-right: 2mm; }
+    .mock-body { background: #fff; padding: 3mm 4mm; }
+    .mock-cap { font-size: 7pt; color: #6b7280; text-align: center; padding: 1mm 3mm 1.5mm; border-top: 1px solid #f0fdf4; font-style: italic; }
 
-    .step-label {
-      font-size: 8.5pt;
-      font-weight: bold;
-      color: #166534;
-      background: #f0fdf4;
-      border: 1px solid #bbf7d0;
-      border-radius: 3px;
-      padding: 0.8mm 2.5mm;
-      display: inline-block;
-      margin-bottom: 1.5mm;
-    }
+    /* 注意・ポイント */
+    .warn { background: #fffbeb; border-left: 3px solid #f59e0b; border-radius: 3px; padding: 2mm 3mm; font-size: 8pt; color: #78350f; margin: 2mm 0; }
+    .tip  { background: #f0fdf4; border-left: 3px solid #16a34a; border-radius: 3px; padding: 2mm 3mm; font-size: 8pt; color: #14532d; margin: 2mm 0; }
 
-    /* ========== ステップ ========== */
-    .steps {
-      counter-reset: step-counter;
-      list-style: none;
-      margin: 0;
-      padding: 0;
-    }
-    .step-item {
-      display: flex;
-      gap: 3mm;
-      margin-bottom: 4mm;
-      align-items: flex-start;
-    }
-    .step-num {
-      flex-shrink: 0;
-      width: 6mm;
-      height: 6mm;
-      background: #166534;
-      color: #fff;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 8pt;
-      font-weight: bold;
-      margin-top: 0.3mm;
-    }
-    .step-content { flex: 1; }
-    .step-title { font-weight: bold; font-size: 9.5pt; color: #111; }
-    .step-desc { font-size: 8.5pt; color: #4b5563; margin-top: 0.5mm; }
-
-    /* ========== スクリーンショット枠 ========== */
-    .ss-wrap {
-      border: 1.5px solid #d1fae5;
-      border-radius: 6px;
-      overflow: hidden;
-      margin: 3mm 0;
-      background: #f9fafb;
-    }
-    .ss-bar {
-      background: #e8f5e9;
-      border-bottom: 1px solid #d1fae5;
-      padding: 1.5mm 3mm;
-      font-size: 7.5pt;
-      color: #166534;
-      font-weight: bold;
-      display: flex;
-      align-items: center;
-      gap: 2mm;
-    }
-    .ss-bar::before {
-      content: "●●●";
-      font-size: 6pt;
-      color: #86efac;
-      letter-spacing: 1px;
-    }
-    .ss-img {
-      width: 100%;
-      display: block;
-    }
-    .ss-caption {
-      font-size: 7.5pt;
-      color: #6b7280;
-      text-align: center;
-      padding: 1mm 3mm 1.5mm;
-      background: #f9fafb;
-      border-top: 1px solid #f0fdf4;
-    }
-
-    /* ========== 注意・ポイント ========== */
-    .notice {
-      background: #fffbeb;
-      border: 1px solid #fde68a;
-      border-left: 4px solid #f59e0b;
-      border-radius: 4px;
-      padding: 2.5mm 3.5mm;
-      font-size: 8.5pt;
-      color: #78350f;
-      margin: 2mm 0;
-    }
-    .notice strong { color: #b45309; }
-
-    .point {
-      background: #f0fdf4;
-      border: 1px solid #bbf7d0;
-      border-left: 4px solid #16a34a;
-      border-radius: 4px;
-      padding: 2.5mm 3.5mm;
-      font-size: 8.5pt;
-      color: #14532d;
-      margin: 2mm 0;
-    }
-
-    /* ========== テーブル ========== */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 8.5pt;
-      margin: 2mm 0;
-    }
-    th {
-      background: #166534;
-      color: #fff;
-      padding: 2mm 3mm;
-      text-align: left;
-      font-weight: bold;
-    }
-    td {
-      padding: 2mm 3mm;
-      border-bottom: 1px solid #e5e7eb;
-      vertical-align: top;
-    }
+    /* テーブル */
+    table { width: 100%; border-collapse: collapse; font-size: 8pt; margin: 2mm 0; }
+    th { background: #166534; color: #fff; padding: 1.8mm 3mm; text-align: left; }
+    td { padding: 1.8mm 3mm; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
     tr:nth-child(even) td { background: #f9fafb; }
 
-    /* ========== フロー図 ========== */
-    .flow {
-      display: flex;
-      align-items: center;
-      gap: 0;
-      flex-wrap: wrap;
-      margin: 3mm 0;
-    }
-    .flow-box {
-      background: #166534;
-      color: #fff;
-      padding: 2mm 3.5mm;
-      border-radius: 4px;
-      font-size: 8pt;
-      font-weight: bold;
-      text-align: center;
-      min-width: 18mm;
-    }
-    .flow-box.light {
-      background: #f0fdf4;
-      color: #14532d;
-      border: 1.5px solid #86efac;
-    }
-    .flow-arrow {
-      color: #16a34a;
-      font-size: 10pt;
-      padding: 0 1.5mm;
-      font-weight: bold;
-    }
+    /* URL */
+    .url { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 3px; padding: 1.5mm 3mm; font-family: monospace; font-size: 8pt; color: #1e40af; word-break: break-all; margin: 1mm 0; }
 
-    /* ========== URL表示 ========== */
-    .url-box {
-      background: #f1f5f9;
-      border: 1px solid #cbd5e1;
-      border-radius: 4px;
-      padding: 2mm 3mm;
-      font-family: 'Courier New', monospace;
-      font-size: 8.5pt;
-      color: #1e40af;
-      word-break: break-all;
-      margin: 1.5mm 0;
-    }
+    /* バッジ */
+    .badge { display: inline-block; padding: 0.8mm 3mm; border-radius: 20px; font-size: 7.5pt; font-weight: bold; margin-bottom: 2mm; }
+    .b-jja { background: #14532d; color: #fff; }
+    .b-op  { background: #1d4ed8; color: #fff; }
+    .b-mgr { background: #b45309; color: #fff; }
+    .b-stf { background: #6b21a8; color: #fff; }
 
-    /* ========== 役割バッジ ========== */
-    .role-badge {
-      display: inline-block;
-      padding: 0.8mm 3mm;
-      border-radius: 20px;
-      font-size: 8pt;
-      font-weight: bold;
-      margin-bottom: 2mm;
-    }
-    .role-jja { background: #14532d; color: #fff; }
-    .role-operator { background: #1d4ed8; color: #fff; }
-    .role-manager { background: #b45309; color: #fff; }
-    .role-staff { background: #6b21a8; color: #fff; }
+    /* 2列 */
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; margin: 2mm 0; }
 
-    /* ========== 全体フロー ========== */
-    .overview-table td:first-child {
-      width: 28mm;
-      font-weight: bold;
-      white-space: nowrap;
-    }
-
-    /* ========== 区切り線 ========== */
-    hr { border: none; border-top: 1px solid #e5e7eb; margin: 4mm 0; }
-
-    /* ========== 2カラム ========== */
-    .two-col {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 4mm;
-      margin: 2mm 0;
-    }
-
-    /* ========== 印刷時調整 ========== */
-    @media print {
-      .no-print { display: none; }
-      .ss-wrap { break-inside: avoid; }
-      .step-item { break-inside: avoid; }
-    }
-
-    /* ========== 画面プレビュー（スクリーンショット代替） ========== */
-    .screen-preview {
-      border: 2px solid #166534;
-      border-radius: 8px;
-      overflow: hidden;
-      margin: 3mm 0;
-      font-size: 7.5pt;
-    }
-    .screen-topbar {
-      background: #166534;
-      color: #fff;
-      padding: 1.5mm 3mm;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 7pt;
-    }
-    .screen-url {
-      background: #f1f5f9;
-      border-bottom: 1px solid #e2e8f0;
-      padding: 1mm 3mm;
-      font-family: monospace;
-      font-size: 7pt;
-      color: #475569;
-    }
-    .screen-body {
-      background: #fff;
-      padding: 3mm 4mm;
-      min-height: 18mm;
-    }
-    .screen-caption {
-      background: #f0fdf4;
-      border-top: 1px solid #d1fae5;
-      padding: 1mm 3mm;
-      color: #166534;
-      font-size: 7pt;
-      font-style: italic;
-    }
+    hr { border: none; border-top: 1px solid #e5e7eb; margin: 3mm 0; }
   </style>
 </head>
 <body>
 
-<!-- ========================================
-     表紙
-     ======================================== -->
+<!-- 表紙 -->
 <div class="page">
   <div class="cover">
-    <div class="cover-logo">公益社団法人全国学習塾協会（JJA）</div>
-    <div class="cover-title">
-      日本版DBS対応研修<br>修了証発行システム
+    <div class="cover-org">公益社団法人全国学習塾協会（JJA）</div>
+    <div class="cover-title">日本版DBS対応研修<br>修了証発行システム</div>
+    <div class="cover-sub">操 作 マ ニ ュ ア ル</div>
+    <div class="cover-tags">
+      <span class="cover-tag">Chapter 1｜協会本部（JJA）</span>
+      <span class="cover-tag">Chapter 2｜事業者本部</span>
+      <span class="cover-tag">Chapter 3｜教室長</span>
+      <span class="cover-tag">Chapter 4｜従事者（受講者）</span>
     </div>
-    <div class="cover-subtitle">操 作 マ ニ ュ ア ル</div>
-    <div class="cover-desc">
-      <p>● 本書は、こども性暴力防止法（日本版DBS）対応研修システムの操作方法を説明したマニュアルです。</p>
-      <p>● 対象読者ごとにチャプターを分けています。ご自身の役割のチャプターをご参照ください。</p>
-      <p>● 不明な点は協会事務局までお問い合わせください。</p>
-    </div>
-    <div class="cover-users">
-      <span class="cover-user-tag">Chapter 1｜協会本部（JJA）</span>
-      <span class="cover-user-tag">Chapter 2｜事業者本部</span>
-      <span class="cover-user-tag">Chapter 3｜教室長</span>
-      <span class="cover-user-tag">Chapter 4｜従事者（受講者）</span>
-    </div>
-    <div class="cover-date">
-      公益社団法人全国学習塾協会（JJA）事務局<br>
-      2026年4月作成
-    </div>
+    <div class="cover-date">公益社団法人全国学習塾協会（JJA）事務局　2026年4月</div>
   </div>
 </div>
 
-
-<!-- ========================================
-     目次 ＆ システム概要
-     ======================================== -->
+<!-- システム概要 -->
 <div class="page">
-  <div class="section-header">
-    <span class="chapter-num">はじめに</span>
-    システム概要と全体の流れ
-  </div>
+  <div class="ch-header"><small>はじめに</small>システム概要と全体の流れ</div>
 
-  <p style="font-size:9pt;color:#374151;margin-bottom:4mm;">
-    本システムは、こども性暴力防止法（日本版DBS）に関する研修の受講・確認テスト・修了証発行を一元管理するシステムです。
-    協会本部・事業者本部・教室長・従事者の4つの役割が連携して運用します。
-  </p>
-
-  <div class="sub-section">研修コースの種類</div>
+  <div class="sec">研修コース</div>
   <table>
-    <thead>
-      <tr>
-        <th>コース</th>
-        <th>対象者</th>
-        <th>内容</th>
-        <th>修了証</th>
-      </tr>
-    </thead>
+    <thead><tr><th>コース</th><th>対象者</th><th>テスト</th></tr></thead>
     <tbody>
-      <tr>
-        <td><strong>一般研修</strong></td>
-        <td>子どもと接する全スタッフ</td>
-        <td>DBS概要・申請手続き・実務対応</td>
-        <td>修了証①</td>
-      </tr>
-      <tr>
-        <td><strong>情報管理責任者研修</strong></td>
-        <td>情報管理責任者に指定された者</td>
-        <td>上記＋情報管理規程・取扱記録・漏えい対応</td>
-        <td>修了証②</td>
-      </tr>
+      <tr><td><strong>一般研修</strong></td><td>子どもと接する全スタッフ</td><td rowspan="2">20問／合格80%以上</td></tr>
+      <tr><td><strong>情報管理責任者研修</strong></td><td>情報管理責任者に指定された者</td></tr>
     </tbody>
   </table>
 
-  <div class="sub-section" style="margin-top:5mm;">確認テスト仕様</div>
+  <div class="sec" style="margin-top:4mm;">全体の流れ</div>
   <table>
-    <thead><tr><th>項目</th><th>内容</th></tr></thead>
+    <thead><tr><th style="width:25mm;">担当</th><th>やること</th></tr></thead>
     <tbody>
-      <tr><td>出題数</td><td>20問（40問バンクからランダム出題・毎回異なる）</td></tr>
-      <tr><td>合格基準</td><td>16問以上正解（80%以上）</td></tr>
-      <tr><td>不合格1〜2回目</td><td>テストのみ再受講可</td></tr>
-      <tr><td>不合格3回目以降</td><td>動画視聴からやり直し</td></tr>
+      <tr><td><span class="badge b-jja">協会本部</span></td><td>事業者コード・パスワードを発行し、事業者本部に通知</td></tr>
+      <tr><td><span class="badge b-op">事業者本部</span></td><td>管理画面にログイン → 教室登録 → 各教室・情報管理責任者に専用URLを配布</td></tr>
+      <tr><td><span class="badge b-mgr">教室長</span></td><td>受け取ったURLをスタッフに周知・配布</td></tr>
+      <tr><td><span class="badge b-stf">従事者</span></td><td>URLアクセス → 基本情報入力 → 動画視聴 → テスト → 修了証PDF保存</td></tr>
+      <tr><td><span class="badge b-op">事業者本部</span></td><td>受講状況・合否を管理画面で確認。必要に応じて修了証を再発行</td></tr>
     </tbody>
   </table>
 
-  <div class="sub-section" style="margin-top:5mm;">受講から修了証取得までの全体フロー</div>
-
-  <table class="overview-table" style="margin-top:3mm;">
-    <thead><tr><th style="width:22mm;">登場人物</th><th>作業内容</th></tr></thead>
-    <tbody>
-      <tr>
-        <td><span class="role-badge role-jja">協会本部</span></td>
-        <td>事業者コード・パスワードを発行し、事業者本部に通知する</td>
-      </tr>
-      <tr>
-        <td><span class="role-badge role-operator">事業者本部</span></td>
-        <td>管理画面にログインし、教室を登録。各教室・情報管理責任者に専用URLを配布する</td>
-      </tr>
-      <tr>
-        <td><span class="role-badge role-manager">教室長</span></td>
-        <td>受け取った専用URLをスタッフに周知・配布する</td>
-      </tr>
-      <tr>
-        <td><span class="role-badge role-staff">従事者</span></td>
-        <td>専用URLからアクセス → 基本情報入力 → 動画視聴 → テスト受験 → 修了証PDF保存</td>
-      </tr>
-      <tr>
-        <td><span class="role-badge role-operator">事業者本部</span></td>
-        <td>管理画面で受講状況・合否・修了日を確認。必要に応じて修了証を再発行</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <div class="sub-section" style="margin-top:5mm;">目次</div>
+  <div class="sec" style="margin-top:4mm;">目次</div>
   <table>
     <tbody>
-      <tr><td style="width:12mm;">Chapter 1</td><td><strong>協会本部（JJA）の操作方法</strong>……… 管理画面・事業者管理・受講記録閲覧</td></tr>
-      <tr><td>Chapter 2</td><td><strong>事業者本部の操作方法</strong>……… ログイン・教室登録・URL発行・受講管理</td></tr>
-      <tr><td>Chapter 3</td><td><strong>教室長の操作方法</strong>……… URL配布・受講案内</td></tr>
-      <tr><td>Chapter 4</td><td><strong>従事者（受講者）の操作方法</strong>……… 受講フル手順・修了証取得</td></tr>
+      <tr><td style="width:18mm;font-weight:bold;">Chapter 1</td><td>協会本部（JJA）の操作方法</td></tr>
+      <tr><td style="font-weight:bold;">Chapter 2</td><td>事業者本部の操作方法</td></tr>
+      <tr><td style="font-weight:bold;">Chapter 3</td><td>教室長の操作方法</td></tr>
+      <tr><td style="font-weight:bold;">Chapter 4</td><td>従事者（受講者）の操作方法</td></tr>
     </tbody>
   </table>
 </div>
 
-
-<!-- ========================================
-     Chapter 1：協会本部（JJA）
-     ======================================== -->
+<!-- Chapter 1：協会本部 -->
 <div class="page">
-  <div class="section-header">
-    <span class="chapter-num">Chapter 1</span>
-    協会本部（JJA）の操作方法
-  </div>
-  <span class="role-badge role-jja">対象：協会事務局スタッフ</span>
+  <div class="ch-header"><small>Chapter 1</small>協会本部（JJA）の操作方法</div>
+  <span class="badge b-jja">対象：協会事務局スタッフ</span>
 
-  <p style="font-size:8.5pt;color:#374151;margin:2mm 0 4mm;">
-    協会本部は全事業者・全受講記録を横断的に管理できます。事業者コードの発行と、全体の受講進捗確認が主な業務です。
-  </p>
+  <div class="sec">① ログイン</div>
+  <ul class="steps">
+    <li class="step"><div class="snum">1</div><div><div class="stitle">ブラウザで管理画面URLにアクセス</div><div class="url">[システムURL]/admin</div></div></li>
+    <li class="step"><div class="snum">2</div><div><div class="stitle">管理者パスワードを入力して「ログイン」</div></div></li>
+  </ul>
 
-  <div class="sub-section">① 管理画面へのアクセス・ログイン</div>
-
-  <ol class="steps">
-    <li class="step-item">
-      <div class="step-num">1</div>
-      <div class="step-content">
-        <div class="step-title">ブラウザでシステムURLにアクセス</div>
-        <div class="step-desc">アドレスバーに以下のURLを入力します。</div>
-        <div class="url-box">[システムURL]/admin</div>
-      </div>
-    </li>
-    <li class="step-item">
-      <div class="step-num">2</div>
-      <div class="step-content">
-        <div class="step-title">管理者パスワードを入力してログイン</div>
-        <div class="step-desc">「JJA 協会管理画面」のログイン画面が表示されます。協会事務局が保管するパスワードを入力し「ログイン」を押します。</div>
-      </div>
-    </li>
-  </ol>
-
-  <div class="screen-preview">
-    <div class="screen-topbar">
-      <span>● JJA 協会管理画面 ログイン</span>
-      <span style="font-family:monospace;">/admin</span>
-    </div>
-    <div class="screen-body" style="display:flex;flex-direction:column;align-items:center;padding:5mm;">
-      <div style="font-size:10pt;font-weight:bold;color:#14532d;margin-bottom:3mm;">JJA 協会管理画面</div>
+  <div class="mock">
+    <div class="mock-bar"><span>JJA 協会管理画面 ログイン</span><span>/admin</span></div>
+    <div class="mock-body" style="display:flex;flex-direction:column;align-items:center;padding:5mm;">
+      <div style="font-size:10pt;font-weight:bold;color:#14532d;margin-bottom:1mm;">JJA 協会管理画面</div>
       <div style="font-size:8pt;color:#6b7280;margin-bottom:4mm;">管理者パスワードを入力してください</div>
       <div style="border:1px solid #d1d5db;border-radius:4px;padding:2mm 4mm;width:55mm;font-size:8pt;color:#9ca3af;margin-bottom:3mm;">パスワードを入力</div>
       <div style="background:#166534;color:#fff;padding:2mm 12mm;border-radius:4px;font-size:9pt;font-weight:bold;">ログイン</div>
-      <div style="font-size:7pt;color:#9ca3af;margin-top:3mm;">※ 協会事務局専用</div>
     </div>
-    <div class="screen-caption">▲ /admin のログイン画面。パスワードは協会内で厳重管理してください。</div>
+    <div class="mock-cap">▲ /admin のログイン画面</div>
   </div>
 
-  <div class="sub-section">② 管理ダッシュボードの見方</div>
-  <p style="font-size:8.5pt;color:#374151;margin-bottom:2mm;">
-    ログイン後、全体の統計サマリーとタブ形式の管理画面が表示されます。
-  </p>
+  <div class="sec">② 管理ダッシュボード</div>
 
-  <div class="screen-preview">
-    <div class="screen-topbar">
-      <span>● JJA 協会管理画面 ダッシュボード</span>
-      <span style="font-family:monospace;">/admin（ログイン後）</span>
-    </div>
-    <div class="screen-body">
+  <div class="mock">
+    <div class="mock-bar"><span>JJA 協会管理画面 ダッシュボード</span><span>/admin（ログイン後）</span></div>
+    <div class="mock-body">
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:2mm;margin-bottom:3mm;">
-        <div style="border:1px solid #e5e7eb;border-radius:4px;padding:2mm;text-align:center;font-size:7.5pt;">
-          <div style="color:#6b7280;">事業者数</div><div style="font-size:12pt;font-weight:bold;color:#111;">6</div>
-        </div>
-        <div style="border:1px solid #e5e7eb;border-radius:4px;padding:2mm;text-align:center;font-size:7.5pt;">
-          <div style="color:#6b7280;">教室数</div><div style="font-size:12pt;font-weight:bold;color:#111;">13</div>
-        </div>
-        <div style="border:1px solid #86efac;border-radius:4px;padding:2mm;text-align:center;font-size:7.5pt;">
-          <div style="color:#166534;">合格者</div><div style="font-size:12pt;font-weight:bold;color:#16a34a;">0</div>
-        </div>
-        <div style="border:1px solid #fecaca;border-radius:4px;padding:2mm;text-align:center;font-size:7.5pt;">
-          <div style="color:#dc2626;">不合格</div><div style="font-size:12pt;font-weight:bold;color:#dc2626;">2</div>
-        </div>
+        <div style="border:1px solid #e5e7eb;border-radius:4px;padding:2mm;text-align:center;font-size:7.5pt;"><div style="color:#6b7280;">事業者数</div><div style="font-size:11pt;font-weight:bold;">6</div></div>
+        <div style="border:1px solid #e5e7eb;border-radius:4px;padding:2mm;text-align:center;font-size:7.5pt;"><div style="color:#6b7280;">教室数</div><div style="font-size:11pt;font-weight:bold;">13</div></div>
+        <div style="border:1px solid #86efac;border-radius:4px;padding:2mm;text-align:center;font-size:7.5pt;"><div style="color:#166534;">合格者</div><div style="font-size:11pt;font-weight:bold;color:#16a34a;">0</div></div>
+        <div style="border:1px solid #fecaca;border-radius:4px;padding:2mm;text-align:center;font-size:7.5pt;"><div style="color:#dc2626;">不合格</div><div style="font-size:11pt;font-weight:bold;color:#dc2626;">2</div></div>
       </div>
-      <div style="display:flex;gap:3mm;border-bottom:2px solid #166534;padding-bottom:1mm;margin-bottom:2mm;">
-        <div style="font-size:8pt;font-weight:bold;color:#166534;border-bottom:2px solid #166534;padding-bottom:1mm;margin-bottom:-2px;">受講記録</div>
-        <div style="font-size:8pt;color:#6b7280;">事業者一覧</div>
-        <div style="font-size:8pt;color:#6b7280;">教室一覧</div>
+      <div style="display:flex;gap:4mm;border-bottom:1px solid #e5e7eb;padding-bottom:1.5mm;margin-bottom:2mm;font-size:8pt;">
+        <span style="font-weight:bold;color:#166534;border-bottom:2px solid #166534;padding-bottom:1.5mm;margin-bottom:-2px;">受講記録</span>
+        <span style="color:#9ca3af;">事業者一覧</span>
+        <span style="color:#9ca3af;">教室一覧</span>
       </div>
-      <div style="font-size:7.5pt;color:#374151;">
-        <div style="display:grid;grid-template-columns:25mm 18mm 30mm 18mm 20mm 18mm;gap:1mm;background:#f0fdf4;padding:1.5mm;font-weight:bold;font-size:7pt;border-radius:2px;margin-bottom:1mm;">
-          <span>受講日時</span><span>事業者コード</span><span>事業者名</span><span>教室名</span><span>氏名</span><span>合否</span>
-        </div>
-        <div style="display:grid;grid-template-columns:25mm 18mm 30mm 18mm 20mm 18mm;gap:1mm;padding:1mm;border-bottom:1px solid #f0fdf4;">
-          <span>2026/04/13</span><span>A001</span><span>株式会社中村</span><span>渋谷校</span><span>山田 太郎</span>
-          <span style="color:#dc2626;font-weight:bold;">不合格</span>
-        </div>
-      </div>
+      <div style="font-size:7.5pt;color:#374151;">受講者の記録が一覧表示されます（受講日・事業者名・教室名・氏名・合否）</div>
     </div>
-    <div class="screen-caption">▲ 管理ダッシュボード。全事業者の受講記録・事業者一覧・教室一覧を確認できます。</div>
+    <div class="mock-cap">▲ ログイン後のダッシュボード。タブで受講記録・事業者一覧・教室一覧を切り替えできます。</div>
   </div>
 
-  <div class="sub-section">③ 各タブの機能</div>
-  <table>
-    <thead><tr><th>タブ名</th><th>確認できる内容</th></tr></thead>
-    <tbody>
-      <tr><td><strong>受講記録</strong></td><td>全受講者の受講日・事業者名・教室名・氏名・得点・合否・修了日。検索・フィルター機能あり。</td></tr>
-      <tr><td><strong>事業者一覧</strong></td><td>登録済みの全事業者のコード・事業者名・ステータスを確認。</td></tr>
-      <tr><td><strong>教室一覧</strong></td><td>全教室のコード・教室名・所属事業者・ステータスを確認。</td></tr>
-    </tbody>
-  </table>
-
-  <div class="notice" style="margin-top:3mm;">
-    <strong>⚠ セキュリティ注意：</strong>管理画面のパスワードは協会事務局内で厳重に管理し、外部には絶対に共有しないでください。
-  </div>
+  <div class="warn"><strong>⚠</strong> 管理者パスワードは外部に共有しないでください。</div>
 </div>
 
-
-<!-- ========================================
-     Chapter 2：事業者本部（1/2）
-     ======================================== -->
+<!-- Chapter 2：事業者本部 -->
 <div class="page">
-  <div class="section-header">
-    <span class="chapter-num">Chapter 2</span>
-    事業者本部の操作方法（前半）
-  </div>
-  <span class="role-badge role-operator">対象：事業者本部スタッフ</span>
+  <div class="ch-header"><small>Chapter 2</small>事業者本部の操作方法</div>
+  <span class="badge b-op">対象：事業者本部スタッフ</span>
 
-  <p style="font-size:8.5pt;color:#374151;margin:2mm 0 4mm;">
-    事業者本部は、教室の登録・受講URLの発行・受講状況の管理・修了証の再発行を行います。
-    協会から発行された<strong>事業者コード</strong>と<strong>パスワード</strong>でログインします。
-  </p>
+  <div class="sec">① ログイン</div>
+  <ul class="steps">
+    <li class="step"><div class="snum">1</div><div><div class="stitle">ログイン画面にアクセス</div><div class="url">[システムURL]/operator/login</div></div></li>
+    <li class="step"><div class="snum">2</div><div><div class="stitle">事業者コード・パスワードを入力してログイン</div></div></li>
+  </ul>
 
-  <div class="sub-section">① 管理画面へのログイン</div>
-
-  <ol class="steps">
-    <li class="step-item">
-      <div class="step-num">1</div>
-      <div class="step-content">
-        <div class="step-title">ブラウザでログイン画面にアクセス</div>
-        <div class="url-box">[システムURL]/operator/login</div>
-      </div>
-    </li>
-    <li class="step-item">
-      <div class="step-num">2</div>
-      <div class="step-content">
-        <div class="step-title">事業者コードとパスワードを入力してログイン</div>
-        <div class="step-desc">協会から発行された事業者コード（例：A001）とパスワードを入力します。</div>
-      </div>
-    </li>
-  </ol>
-
-  <div class="screen-preview">
-    <div class="screen-topbar">
-      <span>● 事業者管理画面 ログイン</span>
-      <span style="font-family:monospace;">/operator/login</span>
-    </div>
-    <div class="screen-body" style="display:flex;flex-direction:column;align-items:center;padding:5mm;">
-      <div style="font-size:10pt;font-weight:bold;color:#14532d;margin-bottom:1mm;">事業者管理画面</div>
-      <div style="font-size:8pt;color:#6b7280;margin-bottom:4mm;">事業者コードとパスワードを入力してください</div>
-      <div style="width:60mm;">
-        <div style="font-size:8pt;margin-bottom:1mm;color:#374151;">事業者コード</div>
-        <div style="border:1px solid #d1d5db;border-radius:4px;padding:2mm 3mm;font-size:8pt;color:#9ca3af;margin-bottom:2.5mm;">例：A001</div>
-        <div style="font-size:8pt;margin-bottom:1mm;color:#374151;">パスワード</div>
-        <div style="border:1px solid #d1d5db;border-radius:4px;padding:2mm 3mm;font-size:8pt;color:#9ca3af;margin-bottom:3mm;">パスワードを入力</div>
+  <div class="mock">
+    <div class="mock-bar"><span>事業者管理画面 ログイン</span><span>/operator/login</span></div>
+    <div class="mock-body" style="display:flex;flex-direction:column;align-items:center;padding:4mm;">
+      <div style="font-size:10pt;font-weight:bold;color:#14532d;margin-bottom:3mm;">事業者管理画面</div>
+      <div style="width:58mm;">
+        <div style="font-size:8pt;margin-bottom:1mm;">事業者コード</div>
+        <div style="border:1px solid #d1d5db;border-radius:4px;padding:2mm 3mm;font-size:8pt;color:#9ca3af;margin-bottom:2mm;">例：A001</div>
+        <div style="font-size:8pt;margin-bottom:1mm;">パスワード</div>
+        <div style="border:1px solid #d1d5db;border-radius:4px;padding:2mm 3mm;font-size:8pt;color:#9ca3af;margin-bottom:2.5mm;">パスワードを入力</div>
         <div style="background:#166534;color:#fff;padding:2mm;border-radius:4px;font-size:9pt;font-weight:bold;text-align:center;">ログイン</div>
       </div>
-      <div style="font-size:7pt;color:#9ca3af;margin-top:3mm;">※ 事業者コードとパスワードは事務局から発行されます</div>
     </div>
-    <div class="screen-caption">▲ 事業者ログイン画面。事業者コードとパスワードは協会事務局から通知されます。</div>
+    <div class="mock-cap">▲ 事業者コードとパスワードは協会から通知されます。</div>
   </div>
 
-  <div class="sub-section">② 教室の登録（CSV取込）</div>
-  <p style="font-size:8.5pt;color:#374151;margin-bottom:2mm;">
-    初回ログイン後、まず教室を登録します。CSVファイルまたは直接入力で一括登録できます。
-  </p>
+  <div class="sec">② 教室の登録（CSV取込）</div>
+  <ul class="steps">
+    <li class="step"><div class="snum">1</div><div><div class="stitle">ダッシュボード右上「教室CSV取込」をクリック</div></div></li>
+    <li class="step"><div class="snum">2</div><div><div class="stitle">教室名を入力（CSVまたは直接入力）して「登録する」</div><div class="sdesc">1行1教室名。教室コードは自動採番されます。</div></div></li>
+  </ul>
 
-  <ol class="steps">
-    <li class="step-item">
-      <div class="step-num">1</div>
-      <div class="step-content">
-        <div class="step-title">ダッシュボード右上の「教室CSV取込」をクリック</div>
-      </div>
-    </li>
-    <li class="step-item">
-      <div class="step-num">2</div>
-      <div class="step-content">
-        <div class="step-title">CSVファイルまたはテキスト直接入力で教室名を登録</div>
-        <div class="step-desc">CSVは「教室名」の列のみ使用します。または、テキストエリアに1行1教室名で直接入力も可能です。</div>
-      </div>
-    </li>
-    <li class="step-item">
-      <div class="step-num">3</div>
-      <div class="step-content">
-        <div class="step-title">「登録する」ボタンを押して完了</div>
-        <div class="step-desc">登録されると教室コード（例：A001-C01）が自動採番されます。</div>
-      </div>
-    </li>
-  </ol>
-
-  <div class="screen-preview">
-    <div class="screen-topbar">
-      <span>● 教室CSV取込</span>
-      <span style="font-family:monospace;">/operator/import</span>
-    </div>
-    <div class="screen-body">
-      <div style="font-size:9pt;font-weight:bold;color:#14532d;margin-bottom:2mm;">教室CSV取込</div>
-      <div style="font-size:8pt;color:#374151;margin-bottom:2mm;">CSVファイルを選択</div>
-      <div style="display:flex;gap:2mm;align-items:center;margin-bottom:3mm;">
+  <div class="mock">
+    <div class="mock-bar"><span>教室CSV取込</span><span>/operator/import</span></div>
+    <div class="mock-body">
+      <div style="font-size:8.5pt;font-weight:bold;color:#14532d;margin-bottom:2mm;">教室CSV取込</div>
+      <div style="display:flex;gap:2mm;align-items:center;margin-bottom:2.5mm;">
         <div style="background:#f0fdf4;border:1px solid #86efac;color:#166534;font-size:8pt;padding:1.5mm 3mm;border-radius:4px;font-weight:bold;">ファイルを選択</div>
-        <span style="font-size:7.5pt;color:#9ca3af;">選択されていません</span>
+        <span style="font-size:7.5pt;color:#9ca3af;">または</span>
       </div>
-      <div style="font-size:8pt;color:#374151;margin-bottom:1mm;">または直接入力（1行に1教室名）</div>
-      <div style="border:1px solid #d1d5db;border-radius:4px;padding:2mm;font-size:7.5pt;color:#374151;height:16mm;background:#fafafa;">
-        渋谷校<br>新宿校<br>池袋校<br>横浜校
-      </div>
-      <div style="font-size:7pt;color:#9ca3af;margin:1.5mm 0 2mm;">CSVフォーマット（例）：「教室名」列のみ使用。ヘッダー行は自動スキップ。同名教室はスキップされます。</div>
+      <div style="font-size:8pt;margin-bottom:1mm;">直接入力（1行に1教室名）</div>
+      <div style="border:1px solid #d1d5db;border-radius:4px;padding:2mm;font-size:7.5pt;color:#374151;height:14mm;background:#fafafa;">渋谷校<br>新宿校<br>池袋校</div>
     </div>
-    <div class="screen-caption">▲ 教室CSV取込画面。CSVファイルのアップロードまたはテキスト直接入力で教室を一括登録できます。</div>
+    <div class="mock-cap">▲ CSVファイルまたは直接入力で教室を一括登録できます。</div>
   </div>
 
-  <div class="notice">
-    <strong>注意：</strong>「本部」「本社」「事務局」という名前の教室はCSVから追加できません。本部スタッフの受講は自動生成される本部URL（後述）をご利用ください。
-  </div>
-</div>
-
-
-<!-- ========================================
-     Chapter 2：事業者本部（2/2）
-     ======================================== -->
-<div class="page">
-  <div class="section-header">
-    <span class="chapter-num">Chapter 2（続き）</span>
-    事業者本部の操作方法（後半）
-  </div>
-
-  <div class="sub-section">③ 受講URLの発行・配布</div>
-  <p style="font-size:8.5pt;color:#374151;margin-bottom:2mm;">
-    ダッシュボードのトップに表示される2種類のURLと、教室一覧タブのURLを使い分けます。
-  </p>
-
-  <div class="screen-preview">
-    <div class="screen-topbar">
-      <span>● 事業者ダッシュボード</span>
-      <span style="font-family:monospace;">/operator/dashboard</span>
-    </div>
-    <div class="screen-body">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3mm;">
-        <div>
-          <div style="font-size:10pt;font-weight:bold;color:#111;">株式会社中村</div>
-          <div style="font-size:7.5pt;color:#6b7280;">事業者コード：A001 ／ 事業者管理画面</div>
-        </div>
-        <div style="display:flex;gap:2mm;">
-          <div style="background:#166534;color:#fff;font-size:7.5pt;padding:1.5mm 3mm;border-radius:4px;">教室CSV取込</div>
-          <div style="border:1px solid #d1d5db;font-size:7.5pt;padding:1.5mm 3mm;border-radius:4px;color:#374151;">ログアウト</div>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:3mm;margin-bottom:3mm;">
-        <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:6px;padding:3mm;">
+  <div class="sec">③ 受講URLの発行・配布</div>
+  <div class="mock">
+    <div class="mock-bar"><span>事業者ダッシュボード</span><span>/operator/dashboard</span></div>
+    <div class="mock-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:3mm;margin-bottom:2mm;">
+        <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:5px;padding:2.5mm;">
           <div style="font-size:8pt;font-weight:bold;color:#166534;margin-bottom:1mm;">🏢 本部スタッフ向け受講URL</div>
-          <div style="font-size:7.5pt;color:#166534;margin-bottom:1mm;">教室に所属しない本部・事務局スタッフ（一般研修）はこちらのURLから受講できます。</div>
-          <div style="font-family:monospace;font-size:7pt;color:#166534;background:#fff;padding:1mm;border-radius:3px;margin-bottom:2mm;">/register?biz=A001&cls=A001-HQ</div>
-          <div style="border:1px solid #86efac;color:#166534;font-size:7.5pt;padding:1mm 2mm;border-radius:4px;text-align:center;font-weight:bold;">本部URLをコピー</div>
+          <div style="font-family:monospace;font-size:7pt;color:#166534;margin-bottom:1.5mm;">/register?biz=A001&cls=A001-HQ</div>
+          <div style="border:1px solid #86efac;color:#166534;font-size:7.5pt;padding:1mm;border-radius:3px;text-align:center;font-weight:bold;">本部URLをコピー</div>
         </div>
-        <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:6px;padding:3mm;">
+        <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:5px;padding:2.5mm;">
           <div style="font-size:8pt;font-weight:bold;color:#b45309;margin-bottom:1mm;">📋 情報管理責任者向け受講URL</div>
-          <div style="font-size:7.5pt;color:#92400e;margin-bottom:1mm;">情報管理責任者に指定された方はこちらのURLから専用研修を受講してください。</div>
-          <div style="font-family:monospace;font-size:7pt;color:#b45309;background:#fff;padding:1mm;border-radius:3px;margin-bottom:2mm;">/register?biz=A001&cls=A001-HQ&track=manager</div>
-          <div style="border:1px solid #fde68a;color:#b45309;font-size:7.5pt;padding:1mm 2mm;border-radius:4px;text-align:center;font-weight:bold;">責任者URLをコピー</div>
+          <div style="font-family:monospace;font-size:7pt;color:#b45309;margin-bottom:1.5mm;">/register?biz=A001&cls=A001-HQ&track=manager</div>
+          <div style="border:1px solid #fde68a;color:#b45309;font-size:7.5pt;padding:1mm;border-radius:3px;text-align:center;font-weight:bold;">責任者URLをコピー</div>
         </div>
       </div>
+      <div style="font-size:7.5pt;color:#374151;">「教室一覧・URL発行」タブ → 各教室の「URLコピー」で各教室専用URLを発行</div>
     </div>
-    <div class="screen-caption">▲ ダッシュボード上部に2種類のURLが表示されます。「コピー」ボタンでURLをクリップボードに貼り付けできます。</div>
+    <div class="mock-cap">▲ ダッシュボード上部の2つのURLと、教室一覧タブの教室別URLを配布します。</div>
   </div>
 
-  <table style="margin-top:2mm;">
-    <thead><tr><th>URL種別</th><th>配布先</th><th>研修内容</th></tr></thead>
+  <table style="margin-top:1mm;">
+    <thead><tr><th>URL</th><th>配布先</th></tr></thead>
     <tbody>
-      <tr>
-        <td><strong>各教室専用URL</strong><br><span style="font-size:7.5pt;color:#6b7280;">教室一覧タブ→URLコピー</span></td>
-        <td>各教室の全スタッフ</td>
-        <td>一般研修（DBS概要・実務）</td>
-      </tr>
-      <tr>
-        <td><strong>本部スタッフ向けURL</strong><br><span style="font-size:7.5pt;color:#6b7280;">ダッシュボード上部（緑）</span></td>
-        <td>本部・事務局スタッフ</td>
-        <td>一般研修（DBS概要・実務）</td>
-      </tr>
-      <tr>
-        <td><strong>情報管理責任者URL</strong><br><span style="font-size:7.5pt;color:#6b7280;">ダッシュボード上部（黄）</span></td>
-        <td>情報管理責任者のみ</td>
-        <td>情報管理責任者研修（情報管理規程含む）</td>
-      </tr>
+      <tr><td>各教室専用URL（教室一覧タブ）</td><td>各教室の全スタッフ</td></tr>
+      <tr><td>本部スタッフ向けURL（緑）</td><td>本部・事務局スタッフ</td></tr>
+      <tr><td>情報管理責任者URL（黄）</td><td>情報管理責任者のみ</td></tr>
     </tbody>
   </table>
 
-  <div class="sub-section" style="margin-top:4mm;">④ 受講状況の確認</div>
-  <ol class="steps">
-    <li class="step-item">
-      <div class="step-num">1</div>
-      <div class="step-content">
-        <div class="step-title">ダッシュボードの「受講記録」タブをクリック</div>
-        <div class="step-desc">受講日時・教室名・氏名・得点・研修種別・合否・修了日が一覧で確認できます。</div>
-      </div>
-    </li>
-  </ol>
-
-  <div class="sub-section">⑤ 修了証の再発行</div>
-  <ol class="steps">
-    <li class="step-item">
-      <div class="step-num">1</div>
-      <div class="step-content">
-        <div class="step-title">「修了証再発行」タブをクリック</div>
-        <div class="step-desc">合格者の一覧が表示されます。</div>
-      </div>
-    </li>
-    <li class="step-item">
-      <div class="step-num">2</div>
-      <div class="step-content">
-        <div class="step-title">対象者の「PDF再発行」ボタンをクリック</div>
-        <div class="step-desc">修了証画面が開き、PDFとして再ダウンロードできます。</div>
-      </div>
-    </li>
-  </ol>
-
-  <div class="point">
-    <strong>💡 ポイント：</strong>受講者が修了証を紛失した場合でも、事業者管理画面から何度でも再発行できます。受講者を呼び出す必要はありません。
-  </div>
+  <div class="sec">④ 受講状況確認・修了証再発行</div>
+  <ul class="steps">
+    <li class="step"><div class="snum">1</div><div><div class="stitle">「受講記録」タブで受講状況・合否を確認</div></div></li>
+    <li class="step"><div class="snum">2</div><div><div class="stitle">「修了証再発行」タブ → 対象者の「PDF再発行」をクリック</div></div></li>
+  </ul>
 </div>
 
-
-<!-- ========================================
-     Chapter 3：教室長
-     ======================================== -->
+<!-- Chapter 3：教室長 -->
 <div class="page">
-  <div class="section-header">
-    <span class="chapter-num">Chapter 3</span>
-    教室長の操作方法
-  </div>
-  <span class="role-badge role-manager">対象：各教室の責任者（教室長）</span>
+  <div class="ch-header"><small>Chapter 3</small>教室長の操作方法</div>
+  <span class="badge b-mgr">対象：各教室の責任者</span>
 
-  <p style="font-size:8.5pt;color:#374151;margin:2mm 0 4mm;">
-    教室長は、事業者本部から届いた専用URLをスタッフ（従事者）に周知・配布するのが主な役割です。
-    システムへの直接ログインは不要です。
-  </p>
+  <div class="sec">① 事業者本部から専用URLを受け取る</div>
+  <p style="font-size:8.5pt;color:#374151;margin-bottom:2mm;">メール等で届く教室専用URLを確認します。</p>
+  <div class="url">[システムURL]/register?biz=【事業者コード】&cls=【教室コード】</div>
 
-  <div class="sub-section">① 事業者本部から専用URLを受け取る</div>
-  <p style="font-size:8.5pt;color:#374151;margin-bottom:2mm;">
-    事業者本部から、ご自身の教室専用の受講URLがメール等で届きます。URLの形式は以下の通りです。
-  </p>
-  <div class="url-box">[システムURL]/register?biz=【事業者コード】&cls=【教室コード】</div>
-  <div style="font-size:8pt;color:#6b7280;margin:1mm 0 3mm;">例：https://example.com/register?biz=A001&cls=A001-C01</div>
-
-  <div class="notice">
-    <strong>注意：</strong>このURLはご自身の教室専用です。他の教室のURLと混同しないよう管理してください。URLをSNSなどで公開しないようにしてください。
+  <div class="sec">② スタッフへの配布</div>
+  <div class="two" style="margin-top:2mm;">
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;padding:3mm;">
+      <div style="font-size:8.5pt;font-weight:bold;color:#14532d;margin-bottom:1mm;">メール・チャットで送信</div>
+      <p style="font-size:8pt;color:#374151;">URLをコピーしてスタッフ全員に送付します。</p>
+    </div>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;padding:3mm;">
+      <div style="font-size:8.5pt;font-weight:bold;color:#14532d;margin-bottom:1mm;">QRコードに変換して掲示</div>
+      <p style="font-size:8pt;color:#374151;">URLをQRコード化しスタッフルームに掲示すると便利です。</p>
+    </div>
   </div>
 
-  <div class="sub-section" style="margin-top:4mm;">② スタッフ（従事者）への周知方法</div>
-  <p style="font-size:8.5pt;color:#374151;margin-bottom:2mm;">
-    受け取ったURLを、教室のスタッフ全員に配布してください。
-    なお、<strong>情報管理責任者に指定されたスタッフ</strong>については、別途「情報管理責任者向けURL」を使用する必要があります。
-    情報管理責任者向けURLも事業者本部から別途届きます。
-  </p>
-
-  <table>
-    <thead><tr><th>スタッフの種別</th><th>使用するURL</th><th>備考</th></tr></thead>
+  <table style="margin-top:3mm;">
+    <thead><tr><th>スタッフ種別</th><th>使用するURL</th></tr></thead>
     <tbody>
-      <tr>
-        <td>一般スタッフ（全員）</td>
-        <td>教室専用URL</td>
-        <td>事業者本部から届く教室別URL</td>
-      </tr>
-      <tr>
-        <td>情報管理責任者</td>
-        <td>情報管理責任者向けURL</td>
-        <td>本部から別途届くURL（track=manager付き）</td>
-      </tr>
+      <tr><td>一般スタッフ（全員）</td><td>教室専用URL</td></tr>
+      <tr><td>情報管理責任者</td><td>情報管理責任者向けURL（別途届く）</td></tr>
     </tbody>
   </table>
 
-  <div class="sub-section" style="margin-top:4mm;">③ 周知・配布の方法例</div>
-  <div class="two-col" style="margin-top:2mm;">
-    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:3mm;">
-      <div style="font-size:8.5pt;font-weight:bold;color:#14532d;margin-bottom:2mm;">メール・チャットで配布</div>
-      <p style="font-size:8pt;color:#374151;">URLをコピーして、教室スタッフ全員にメール・LINE・グループチャットで送信します。</p>
-    </div>
-    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:3mm;">
-      <div style="font-size:8.5pt;font-weight:bold;color:#14532d;margin-bottom:2mm;">QRコードに変換して掲示</div>
-      <p style="font-size:8pt;color:#374151;">URLをQRコードに変換し、スタッフルームに掲示することで、スマートフォンからすぐにアクセスできます。</p>
-    </div>
-  </div>
-
-  <div class="sub-section" style="margin-top:4mm;">④ 受講の確認</div>
-  <p style="font-size:8.5pt;color:#374151;margin-bottom:2mm;">
-    スタッフが受講したかどうかの確認は、事業者本部の管理画面（受講記録タブ）で一括確認できます。
-    教室長自身は管理画面にアクセスできませんので、受講状況の確認は事業者本部にお問い合わせください。
-  </p>
-
-  <div class="point">
-    <strong>💡 受講期限について：</strong>事業者から指定された期限までに全スタッフの受講が完了するよう、早めに周知してください。
-    受講は1人あたり30〜60分程度が目安です。
-  </div>
-
-  <div class="sub-section" style="margin-top:4mm;">⑤ よくある問い合わせへの対応</div>
-  <table>
-    <thead><tr><th>問い合わせ内容</th><th>回答・対応</th></tr></thead>
-    <tbody>
-      <tr>
-        <td>「URLにアクセスできない」</td>
-        <td>URLが正確にコピーされているか確認。スペースが入っていないか確認してください。</td>
-      </tr>
-      <tr>
-        <td>「テストに合格できない」</td>
-        <td>80%（20問中16問）以上の正解が必要です。動画をよく視聴するよう案内してください。</td>
-      </tr>
-      <tr>
-        <td>「修了証を失くした」</td>
-        <td>事業者本部の管理画面から再発行できます。事業者本部にご連絡ください。</td>
-      </tr>
-      <tr>
-        <td>「事業者コードが分からない」</td>
-        <td>専用URLの「biz=」以降の文字列が事業者コードです（例：A001）。</td>
-      </tr>
-    </tbody>
-  </table>
+  <div class="tip" style="margin-top:3mm;"><strong>💡</strong> 受講状況の確認は事業者本部の管理画面で行います。教室長自身はログイン不要です。</div>
+  <div class="warn" style="margin-top:2mm;"><strong>⚠</strong> 修了証を紛失した場合は事業者本部に再発行を依頼してください。</div>
 </div>
 
-
-<!-- ========================================
-     Chapter 4：従事者（受講者）1/2
-     ======================================== -->
+<!-- Chapter 4：従事者 -->
 <div class="page">
-  <div class="section-header">
-    <span class="chapter-num">Chapter 4</span>
-    従事者（受講者）の操作方法（前半）
-  </div>
-  <span class="role-badge role-staff">対象：各教室のスタッフ・従事者</span>
+  <div class="ch-header"><small>Chapter 4</small>従事者（受講者）の操作方法</div>
+  <span class="badge b-stf">対象：各教室のスタッフ・従事者</span>
+  <p style="font-size:8.5pt;color:#374151;margin:2mm 0 3mm;">教室長から受け取った専用URLにアクセスして受講します。所要時間の目安：30〜60分。</p>
 
-  <p style="font-size:8.5pt;color:#374151;margin:2mm 0 4mm;">
-    教室長から受け取った専用URLにアクセスして研修を受講します。
-    スマートフォン・タブレット・PCどれからでも受講できます。所要時間は30〜60分が目安です。
-  </p>
+  <div class="sec">STEP 1：基本情報の入力</div>
+  <p style="font-size:8pt;color:#374151;margin-bottom:2mm;">専用URLでアクセスすると事業者コード・教室名は自動入力済みです。<strong>氏名</strong>を入力し、誓約にチェックして「次へ」を押します。</p>
 
-  <div class="sub-section">受講の流れ（全体）</div>
-  <div class="flow" style="margin:2mm 0 4mm;justify-content:center;">
-    <div class="flow-box">① 専用URL<br>にアクセス</div>
-    <div class="flow-arrow">→</div>
-    <div class="flow-box">② 基本情報<br>の入力</div>
-    <div class="flow-arrow">→</div>
-    <div class="flow-box">③ 研修動画<br>の視聴</div>
-    <div class="flow-arrow">→</div>
-    <div class="flow-box">④ 確認テスト<br>の受験</div>
-    <div class="flow-arrow">→</div>
-    <div class="flow-box">⑤ 修了証<br>PDF保存</div>
-  </div>
-
-  <div class="sub-section">STEP 1：専用URLにアクセス</div>
-  <p style="font-size:8.5pt;color:#374151;margin-bottom:2mm;">
-    教室長から届いた専用URLをブラウザで開きます。URLにアクセスすると、以下のようなトップ画面が表示されます。
-  </p>
-
-  <div class="screen-preview">
-    <div class="screen-topbar">
-      <span>● トップ画面</span>
-      <span style="font-family:monospace;">/</span>
-    </div>
-    <div class="screen-body" style="text-align:center;padding:4mm;">
-      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:2mm 4mm;display:inline-block;font-size:7.5pt;color:#166534;font-weight:bold;margin-bottom:2mm;">必須受講</div>
-      <div style="font-size:13pt;font-weight:bold;color:#14532d;line-height:1.4;margin-bottom:2mm;">こども性暴力防止法（日本版DBS）<br>対応研修</div>
-      <div style="font-size:8pt;color:#6b7280;margin-bottom:3mm;">公益社団法人全国学習塾協会（JJA）</div>
-      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:2.5mm;text-align:left;font-size:7.5pt;color:#92400e;margin-bottom:2mm;">
-        <div style="font-weight:bold;margin-bottom:1mm;">この研修について</div>
-        本研修は、こども性暴力防止法に関する正しい知識の習得を目的としています。確認テスト（全20問）で<strong>16問以上正解（80%以上）</strong>で合格となり、修了証が発行されます。
+  <div class="mock">
+    <div class="mock-bar"><span>基本情報入力</span><span>/register?biz=A001&cls=A001-C01</span></div>
+    <div class="mock-body">
+      <div style="background:#dbeafe;border:1px solid #93c5fd;border-radius:3px;padding:2mm;font-size:7.5pt;color:#1e40af;margin-bottom:2mm;"><strong>📎 専用URLからアクセスしました</strong><br>事業者コード・教室名が自動で入力されています。氏名をご入力ください。</div>
+      <div style="display:grid;gap:1.5mm;">
+        <div><div style="font-size:7.5pt;color:#374151;margin-bottom:0.5mm;">事業者コード ＊</div><div style="border:1.5px solid #86efac;background:#f0fdf4;border-radius:3px;padding:1.5mm 3mm;font-size:8.5pt;color:#14532d;font-weight:bold;">A001　<span style="font-size:7pt;color:#16a34a;">✓ 確認済み</span></div></div>
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:3px;padding:2mm 3mm;font-size:8pt;"><span style="font-size:7pt;color:#166534;font-weight:bold;">事業者名</span>　株式会社中村</div>
+        <div><div style="font-size:7.5pt;color:#374151;margin-bottom:0.5mm;">教室名 ＊ <span style="color:#3b82f6;font-size:7pt;">（自動入力）</span></div><div style="border:1.5px solid #86efac;background:#f0fdf4;border-radius:3px;padding:1.5mm 3mm;font-size:8.5pt;">渋谷校</div></div>
+        <div><div style="font-size:7.5pt;color:#374151;margin-bottom:0.5mm;">氏名 ＊</div><div style="border:1px solid #d1d5db;border-radius:3px;padding:1.5mm 3mm;font-size:8pt;color:#9ca3af;">例：山田 太郎</div></div>
+        <div style="border:1px solid #e5e7eb;border-radius:3px;padding:2mm 3mm;display:flex;align-items:center;gap:2mm;"><div style="width:4mm;height:4mm;border:1px solid #d1d5db;border-radius:2px;flex-shrink:0;"></div><span style="font-size:8pt;">私は、この研修を<strong>本人自身が受講</strong>していることを誓います。</span></div>
       </div>
     </div>
-    <div class="screen-caption">▲ システムのトップ画面。「受講を開始する」ボタンから受講を始めます。</div>
+    <div class="mock-cap">▲ 氏名を入力し誓約にチェック → 「次へ進む」を押します。</div>
   </div>
 
-  <div class="sub-section">STEP 2：基本情報の入力</div>
-  <p style="font-size:8.5pt;color:#374151;margin-bottom:2mm;">
-    専用URLからアクセスした場合、事業者コードと教室名は自動で入力されています。<strong>氏名</strong>のみ入力してください。
-  </p>
+  <div class="sec">STEP 2：研修動画の視聴</div>
 
-  <div class="screen-preview">
-    <div class="screen-topbar">
-      <span>● 基本情報入力（専用URLアクセス時）</span>
-      <span style="font-family:monospace;">/register?biz=A001&cls=A001-C01</span>
+  <div class="mock">
+    <div class="mock-bar"><span>研修動画の視聴</span><span>/video</span></div>
+    <div class="mock-body">
+      <div style="font-size:8pt;color:#374151;margin-bottom:1.5mm;">受講者：株式会社中村 ／ 渋谷校 ／ 山田 太郎 様</div>
+      <div style="background:#111;aspect-ratio:16/9;max-height:22mm;display:flex;align-items:center;justify-content:center;border-radius:3px;margin-bottom:1.5mm;"><div style="width:9mm;height:9mm;background:rgba(255,0,0,0.85);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9pt;padding-left:0.8mm;">▶</div></div>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:3px;padding:1.5mm 3mm;font-size:7.5pt;color:#6b7280;">動画を最後まで視聴すると「確認テストへ進む」ボタンが有効になります。</div>
     </div>
-    <div class="screen-body">
-      <div style="background:#dbeafe;border:1px solid #93c5fd;border-radius:4px;padding:2mm 3mm;font-size:7.5pt;color:#1e40af;margin-bottom:2mm;">
-        <strong>📎 専用URLからアクセスしました</strong><br>
-        事業者コード・教室名が自動で入力されています。氏名をご入力ください。
-      </div>
-      <div style="display:grid;gap:2mm;">
-        <div>
-          <div style="font-size:7.5pt;color:#374151;margin-bottom:1mm;">事業者コード ＊</div>
-          <div style="border:1.5px solid #86efac;background:#f0fdf4;border-radius:4px;padding:2mm 3mm;font-size:8.5pt;color:#14532d;font-weight:bold;">A001</div>
-          <div style="font-size:7pt;color:#16a34a;margin-top:0.5mm;">✓ 事業者コードを確認しました</div>
-        </div>
-        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:4px;padding:2mm 3mm;">
-          <div style="font-size:7pt;color:#16a34a;font-weight:bold;">事業者名（自動取得）</div>
-          <div style="font-size:9pt;font-weight:bold;color:#14532d;">株式会社中村</div>
-        </div>
-        <div>
-          <div style="font-size:7.5pt;color:#374151;margin-bottom:1mm;">教室名 ＊ <span style="color:#3b82f6;">（自動入力）</span></div>
-          <div style="border:1.5px solid #86efac;background:#f0fdf4;border-radius:4px;padding:2mm 3mm;font-size:8.5pt;color:#374151;">渋谷校</div>
-        </div>
-        <div>
-          <div style="font-size:7.5pt;color:#374151;margin-bottom:1mm;">氏名 ＊</div>
-          <div style="border:1px solid #d1d5db;border-radius:4px;padding:2mm 3mm;font-size:8pt;color:#9ca3af;">例：山田 太郎</div>
-        </div>
-        <div style="border:1px solid #e5e7eb;border-radius:4px;padding:2.5mm 3mm;display:flex;align-items:flex-start;gap:2mm;">
-          <div style="width:4mm;height:4mm;border:1px solid #d1d5db;border-radius:2px;flex-shrink:0;margin-top:0.3mm;"></div>
-          <span style="font-size:8pt;color:#374151;">私は、この研修を<strong>本人自身が受講</strong>していることを誓います。</span>
-        </div>
-      </div>
-    </div>
-    <div class="screen-caption">▲ 専用URLでアクセスすると事業者コード・教室名は自動入力。氏名を入力し誓約チェックを入れて「次へ」を押します。</div>
+    <div class="mock-cap">▲ 動画終了後にボタンが緑色になり次へ進めます。途中でページを閉じると最初からになります。</div>
   </div>
 
-  <div class="notice">
-    <strong>必ずご本人が入力してください：</strong>「私は本人自身が受講していることを誓います」にチェックしないと次へ進めません。他人の代わりに入力することは禁止されています。
-  </div>
-</div>
+  <div class="sec">STEP 3：確認テストの受験</div>
 
-
-<!-- ========================================
-     Chapter 4：従事者（受講者）2/2
-     ======================================== -->
-<div class="page">
-  <div class="section-header">
-    <span class="chapter-num">Chapter 4（続き）</span>
-    従事者（受講者）の操作方法（後半）
-  </div>
-
-  <div class="sub-section">STEP 3：研修動画の視聴</div>
-  <p style="font-size:8.5pt;color:#374151;margin-bottom:2mm;">
-    動画を<strong>最後まで視聴</strong>すると「確認テストへ進む」ボタンが有効になります。途中でページを閉じると最初から視聴し直しになります。
-  </p>
-
-  <div class="screen-preview">
-    <div class="screen-topbar">
-      <span>● 研修動画の視聴</span>
-      <span style="font-family:monospace;">/video</span>
-    </div>
-    <div class="screen-body">
-      <div style="font-size:8.5pt;color:#374151;margin-bottom:1.5mm;">受講者：株式会社中村 ／ 渋谷校 ／ 山田 太郎 様</div>
-      <div style="background:#000;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;border-radius:4px;margin-bottom:2mm;max-height:25mm;">
-        <div style="width:10mm;height:10mm;background:rgba(255,0,0,0.8);border-radius:50%;display:flex;align-items:center;justify-content:center;">
-          <div style="color:#fff;font-size:10pt;margin-left:1mm;">▶</div>
-        </div>
-      </div>
-      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;padding:2mm 3mm;font-size:8pt;color:#6b7280;margin-bottom:2mm;">
-        動画を最後まで視聴すると「確認テストへ進む」ボタンが有効になります。
-      </div>
-      <div style="font-size:8pt;font-weight:bold;color:#111;margin-bottom:1.5mm;">研修内容</div>
-      <ul style="font-size:7.5pt;color:#374151;padding-left:4mm;list-style:none;">
-        <li style="margin-bottom:0.5mm;">● 日本版DBS（こども性暴力防止法）の目的と概要</li>
-        <li style="margin-bottom:0.5mm;">● 確認申請の対象者（雇用形態を問わず子どもと接する全ての者）</li>
-        <li style="margin-bottom:0.5mm;">● 申請のタイミングと手続きの流れ</li>
-        <li>● 義務不履行の場合の行政措置</li>
-      </ul>
-    </div>
-    <div class="screen-caption">▲ 動画再生画面。動画が終了すると下部のボタンが緑色になり次へ進めます。</div>
-  </div>
-
-  <div class="sub-section">STEP 4：確認テストの受験</div>
-  <p style="font-size:8.5pt;color:#374151;margin-bottom:2mm;">
-    40問のバンクからランダムに20問が出題されます。全問回答後「採点する」を押してください。
-    <strong>16問以上正解（80%以上）</strong>で合格です。
-  </p>
-
-  <div class="screen-preview">
-    <div class="screen-topbar">
-      <span>● 確認テスト</span>
-      <span style="font-family:monospace;">/test</span>
-    </div>
-    <div class="screen-body">
-      <div style="display:flex;justify-content:space-between;margin-bottom:1.5mm;">
-        <div style="font-size:9pt;font-weight:bold;color:#111;">確認テスト</div>
-        <div style="font-size:7.5pt;color:#6b7280;">回答済み：0 / 20 問</div>
-      </div>
-      <div style="font-size:7.5pt;color:#374151;margin-bottom:2mm;">全問回答後「採点する」を押してください。合格基準：<strong>16問以上正解（80%以上）</strong></div>
-      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:2mm;font-size:7.5pt;color:#166534;margin-bottom:2mm;">
-        ※ 40問の問題バンクから20問がランダムに出題されます。問題・選択肢の順番も毎回変わります。
-      </div>
-      <div style="border:1px solid #d1fae5;border-radius:6px;padding:3mm;background:#fff;">
+  <div class="mock">
+    <div class="mock-bar"><span>確認テスト</span><span>/test</span></div>
+    <div class="mock-body">
+      <div style="display:flex;justify-content:space-between;margin-bottom:1.5mm;font-size:8.5pt;"><strong>確認テスト</strong><span style="color:#6b7280;font-size:7.5pt;">回答済み：0 / 20 問</span></div>
+      <div style="font-size:7.5pt;color:#374151;margin-bottom:1.5mm;">合格基準：<strong>16問以上正解（80%以上）</strong>　全問回答後「採点する」を押してください。</div>
+      <div style="border:1px solid #d1fae5;border-radius:4px;padding:2.5mm;">
         <div style="display:flex;gap:2mm;align-items:flex-start;margin-bottom:2mm;">
-          <div style="width:6mm;height:6mm;background:#166534;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7.5pt;font-weight:bold;flex-shrink:0;">1</div>
-          <div style="font-size:8pt;color:#111;font-weight:500;">確認申請の結果、性犯罪歴があることが判明した者について、事業者として取るべき対応として最も適切なものはどれか？</div>
+          <div style="width:5.5mm;height:5.5mm;background:#166534;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7pt;font-weight:bold;flex-shrink:0;">1</div>
+          <div style="font-size:8pt;font-weight:500;color:#111;">確認申請の結果、性犯罪歴があることが判明した場合、事業者として正しい対応はどれか？</div>
         </div>
-        <div style="display:grid;gap:1mm;">
-          <div style="border:1px solid #e5e7eb;border-radius:4px;padding:1.5mm 2.5mm;font-size:7.5pt;color:#374151;background:#f9fafb;">○ 子どもと接しない業務への配置転換のみで対応する</div>
-          <div style="border:1.5px solid #16a34a;border-radius:4px;padding:1.5mm 2.5mm;font-size:7.5pt;color:#166534;background:#f0fdf4;font-weight:500;">◉ 子どもと接する業務に就かせてはならない</div>
+        <div style="display:grid;gap:1mm;font-size:7.5pt;">
+          <div style="border:1px solid #e5e7eb;border-radius:3px;padding:1.5mm 2.5mm;background:#f9fafb;">○ 子どもと接しない業務へ配置転換する</div>
+          <div style="border:1.5px solid #16a34a;border-radius:3px;padding:1.5mm 2.5mm;background:#f0fdf4;color:#166534;font-weight:500;">◉ 子どもと接する業務に就かせてはならない</div>
         </div>
       </div>
     </div>
-    <div class="screen-caption">▲ 確認テスト画面。選択肢を選ぶと緑色でハイライトされます。全問回答後「採点する」ボタンが有効になります。</div>
+    <div class="mock-cap">▲ 選択肢を選んで全問回答後「採点する」を押します。</div>
   </div>
 
-  <div class="sub-section">STEP 5：結果確認・修了証のPDF保存</div>
+  <div class="sec">STEP 4：結果確認・修了証のPDF保存</div>
 
-  <div class="two-col">
+  <div class="two">
     <div>
-      <div class="step-label">合格した場合</div>
-      <div class="screen-preview">
-        <div class="screen-topbar"><span>● テスト結果（合格）</span></div>
-        <div class="screen-body" style="text-align:center;padding:3mm;">
-          <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #86efac;border-radius:6px;padding:3mm;margin-bottom:2mm;">
-            <div style="font-size:11pt;font-weight:bold;color:#14532d;">🎉 合格</div>
-            <div style="font-size:8pt;color:#166534;">おめでとうございます！</div>
-          </div>
-          <div style="font-size:8pt;color:#374151;">正答数：<strong>18 / 20</strong>　得点率：<strong>90%</strong></div>
-          <div style="background:#166534;color:#fff;padding:2mm;border-radius:4px;margin-top:3mm;font-size:8pt;font-weight:bold;">修了証を確認する →</div>
+      <div style="font-size:7.5pt;font-weight:bold;background:#dcfce7;color:#14532d;border-radius:3px;padding:1mm 2.5mm;display:inline-block;margin-bottom:1.5mm;">合格した場合</div>
+      <div class="mock">
+        <div class="mock-bar"><span>結果（合格）</span></div>
+        <div class="mock-body" style="text-align:center;padding:3mm;">
+          <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:5px;padding:2.5mm;margin-bottom:2mm;"><div style="font-size:11pt;font-weight:bold;color:#14532d;">🎉 合格</div><div style="font-size:7.5pt;color:#166534;">正答数 18 / 20（90%）</div></div>
+          <div style="background:#166534;color:#fff;padding:2mm;border-radius:4px;font-size:8pt;font-weight:bold;">修了証を確認する →</div>
         </div>
-        <div class="screen-caption">▲ 合格画面。「修了証を確認する」ボタンで修了証へ進みます。</div>
+        <div class="mock-cap">▲「修了証を確認する」で次へ</div>
       </div>
     </div>
     <div>
-      <div class="step-label">不合格の場合</div>
-      <div class="screen-preview">
-        <div class="screen-topbar"><span>● テスト結果（不合格）</span></div>
-        <div class="screen-body" style="text-align:center;padding:3mm;">
-          <div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:6px;padding:3mm;margin-bottom:2mm;">
-            <div style="font-size:11pt;font-weight:bold;color:#dc2626;">不合格</div>
-            <div style="font-size:8pt;color:#dc2626;">もう一度チャレンジしてください</div>
-          </div>
-          <div style="font-size:7.5pt;color:#374151;margin-bottom:2mm;">正答数：12 / 20（60%）</div>
-          <div style="background:#166534;color:#fff;padding:2mm;border-radius:4px;margin-top:1mm;font-size:8pt;font-weight:bold;">テストを再受験する</div>
+      <div style="font-size:7.5pt;font-weight:bold;background:#fee2e2;color:#dc2626;border-radius:3px;padding:1mm 2.5mm;display:inline-block;margin-bottom:1.5mm;">不合格の場合</div>
+      <div class="mock">
+        <div class="mock-bar"><span>結果（不合格）</span></div>
+        <div class="mock-body" style="text-align:center;padding:3mm;">
+          <div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:5px;padding:2.5mm;margin-bottom:2mm;"><div style="font-size:11pt;font-weight:bold;color:#dc2626;">不合格</div><div style="font-size:7.5pt;color:#dc2626;">正答数 12 / 20（60%）</div></div>
+          <div style="background:#166534;color:#fff;padding:2mm;border-radius:4px;font-size:8pt;font-weight:bold;">テストを再受験する</div>
         </div>
-        <div class="screen-caption">▲ 不合格時は再受験できます。3回不合格で動画から再視聴が必要です。</div>
+        <div class="mock-cap">▲ 3回不合格で動画から再視聴</div>
       </div>
     </div>
   </div>
 
-  <div class="sub-section" style="margin-top:3mm;">STEP 6：修了証のPDF保存</div>
-
-  <div class="screen-preview">
-    <div class="screen-topbar"><span>● 修了証</span><span style="font-family:monospace;">/certificate</span></div>
-    <div class="screen-body" style="display:flex;gap:3mm;">
-      <div style="flex:1;border:1.5px solid #166534;border-radius:4px;overflow:hidden;">
+  <div class="mock" style="margin-top:2mm;">
+    <div class="mock-bar"><span>修了証</span><span>/certificate</span></div>
+    <div class="mock-body" style="display:flex;gap:3mm;">
+      <div style="flex:1;border:1.5px solid #166534;border-radius:3px;overflow:hidden;">
         <div style="height:2.5mm;background:#166534;"></div>
-        <div style="padding:3mm;text-align:center;">
-          <div style="border-top:1.5px solid #166534;border-bottom:1.5px solid #166534;padding:1mm 5mm;display:inline-block;margin-bottom:2mm;">
-            <div style="font-size:10pt;font-weight:bold;color:#14532d;letter-spacing:0.3em;">修 了 証</div>
-          </div>
-          <div style="font-size:7.5pt;color:#374151;margin-bottom:1mm;">株式会社中村</div>
-          <div style="font-size:7pt;color:#374151;margin-bottom:1.5mm;">渋谷校</div>
-          <div style="font-size:11pt;font-weight:bold;color:#111;border-bottom:1.5px solid #14532d;padding-bottom:1mm;margin-bottom:2mm;">山田 太郎 <span style="font-size:8pt;font-weight:normal;">殿</span></div>
-          <div style="font-size:7pt;color:#166534;margin-bottom:1mm;">研　修　名</div>
-          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:3px;padding:1mm 3mm;font-size:7pt;color:#14532d;font-weight:bold;margin-bottom:2mm;">こども性暴力防止法（日本版DBS）対応研修</div>
-          <div style="font-size:7pt;color:#374151;margin-bottom:2mm;">上記の者は所定の確認テストに合格したことを証します。</div>
-          <div style="display:flex;justify-content:center;gap:6mm;border-top:1px solid #d1fae5;padding-top:1.5mm;margin-bottom:2mm;">
-            <div style="text-align:center;font-size:7pt;"><div style="color:#9ca3af;">修了番号</div><div style="font-family:monospace;color:#374151;font-weight:bold;">JJA-20260413-5842</div></div>
-            <div style="text-align:center;font-size:7pt;"><div style="color:#9ca3af;">修了日</div><div style="color:#374151;font-weight:bold;">2026年4月13日</div></div>
+        <div style="padding:2.5mm;text-align:center;">
+          <div style="border-top:1.5px solid #166534;border-bottom:1.5px solid #166534;padding:0.8mm 4mm;display:inline-block;margin-bottom:1.5mm;"><div style="font-size:10pt;font-weight:bold;color:#14532d;letter-spacing:0.3em;">修 了 証</div></div>
+          <div style="font-size:7.5pt;color:#374151;">株式会社中村　渋谷校</div>
+          <div style="font-size:11pt;font-weight:bold;color:#111;border-bottom:1.5px solid #14532d;padding-bottom:0.8mm;margin:1mm 0 1.5mm;">山田 太郎 <span style="font-size:8pt;font-weight:normal;">殿</span></div>
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:3px;padding:0.8mm 3mm;font-size:7pt;color:#14532d;font-weight:bold;margin-bottom:1.5mm;">こども性暴力防止法（日本版DBS）対応研修</div>
+          <div style="font-size:7pt;color:#374151;margin-bottom:1.5mm;">上記の者は所定の確認テストに合格したことを証します。</div>
+          <div style="display:flex;justify-content:center;gap:5mm;font-size:7pt;border-top:1px solid #d1fae5;padding-top:1mm;margin-bottom:1mm;">
+            <div><div style="color:#9ca3af;">修了番号</div><div style="font-family:monospace;font-weight:bold;">JJA-20260413-5842</div></div>
+            <div><div style="color:#9ca3af;">修了日</div><div style="font-weight:bold;">2026年4月13日</div></div>
           </div>
           <div style="font-size:7.5pt;font-weight:bold;color:#14532d;">公益社団法人全国学習塾協会（JJA）</div>
         </div>
         <div style="height:2.5mm;background:#166534;"></div>
       </div>
-      <div style="flex:0 0 40mm;display:flex;flex-direction:column;gap:2mm;justify-content:flex-start;">
+      <div style="flex:0 0 35mm;display:flex;flex-direction:column;gap:2mm;justify-content:flex-start;padding-top:2mm;">
         <div style="background:#166534;color:#fff;padding:2mm;border-radius:4px;font-size:8pt;font-weight:bold;text-align:center;">📄 PDF出力</div>
         <div style="border:1px solid #d1d5db;color:#374151;padding:2mm;border-radius:4px;font-size:8pt;text-align:center;">トップへ戻る</div>
       </div>
     </div>
-    <div class="screen-caption">▲ 修了証画面。「PDF出力」ボタンでA4サイズのPDFファイルがダウンロードされます。大切に保管してください。</div>
+    <div class="mock-cap">▲「PDF出力」ボタンでA4サイズのPDFをダウンロードして保存してください。</div>
   </div>
 
-  <div class="point" style="margin-top:2mm;">
-    <strong>💡 修了証を失くした場合：</strong>教室長もしくは事業者本部にご連絡ください。管理画面から再発行してもらえます。
-  </div>
+  <div class="tip" style="margin-top:2mm;"><strong>💡 修了証を紛失した場合：</strong>教室長または事業者本部に連絡すると再発行してもらえます。</div>
 </div>
 
 </body>
