@@ -499,8 +499,11 @@ export default function ClassroomDashboard() {
                         <td className="px-3 py-2.5 font-medium text-gray-900 whitespace-nowrap">
                           {r.traineeName || r.fullName || '—'}
                         </td>
-                        <td className="px-3 py-2.5 whitespace-nowrap text-gray-700">
-                          {r.trainingType || '—'}
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          {r.track === 'manager'
+                            ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">情報管理</span>
+                            : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">一般</span>
+                          }
                         </td>
                         <td className="px-3 py-2.5 text-center font-mono text-gray-800">
                           {r.score !== undefined && r.score !== null ? `${r.score}点` : '—'}
@@ -529,16 +532,26 @@ export default function ClassroomDashboard() {
                           {passed ? (r.certNumber || r.completionNumber || '—') : '—'}
                         </td>
                         <td className="px-3 py-2.5 whitespace-nowrap">
-                          {passed ? (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {passed && (
+                              <button
+                                onClick={() => router.push('/certificate?record=' + r.id)}
+                                className="text-xs text-green-700 hover:text-green-900 underline underline-offset-2 font-medium whitespace-nowrap"
+                              >
+                                修了証再発行
+                              </button>
+                            )}
                             <button
-                              onClick={() => router.push('/certificate?record=' + r.id)}
-                              className="text-xs text-green-700 hover:text-green-900 underline underline-offset-2 font-medium whitespace-nowrap"
+                              onClick={() => copyRetrainUrl(r.id, auth.operatorCode, auth.classroomCode, r.track)}
+                              className={`text-xs px-2 py-1 rounded border font-medium transition-colors whitespace-nowrap ${
+                                copiedTraineeId === r.id
+                                  ? 'bg-green-700 text-white border-green-700'
+                                  : 'bg-white border-blue-300 text-blue-600 hover:bg-blue-50'
+                              }`}
                             >
-                              修了証再発行
+                              {copiedTraineeId === r.id ? '✓ コピー済' : '🔗 再研修URL'}
                             </button>
-                          ) : (
-                            <span className="text-xs text-gray-300">—</span>
-                          )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -586,8 +599,11 @@ export default function ClassroomDashboard() {
                         <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
                           {t.fullName || '—'}
                         </td>
-                        <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                          {t.trainingType || '—'}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {t.track === 'manager'
+                            ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">情報管理</span>
+                            : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">一般</span>
+                          }
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full ${STATUS_COLOR[statusKey] || STATUS_COLOR.active}`}>

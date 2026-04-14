@@ -64,6 +64,33 @@ export default function OperatorDashboard() {
   const [modalNotes, setModalNotes] = useState('');
   const [statusUpdating, setStatusUpdating] = useState(false);
 
+  // 教室変更モーダル
+  const [clsChangeModal, setClsChangeModal] = useState(null); // { id, fullName, currentCode, currentName }
+  const [newClsCode, setNewClsCode] = useState('');
+  const [clsChanging, setClsChanging] = useState(false);
+
+  const handleClassroomChange = async () => {
+    if (!clsChangeModal || !newClsCode) return;
+    const selected = classrooms.find((c) => c.classroomCode === newClsCode);
+    if (!selected) return;
+    setClsChanging(true);
+    try {
+      const res = await fetch('/api/update-trainee-classroom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: clsChangeModal.id, classroomCode: selected.classroomCode, classroomName: selected.classroomName }),
+      });
+      if (res.ok) {
+        setTrainees((prev) => prev.map((t) =>
+          t.id === clsChangeModal.id ? { ...t, classroomCode: selected.classroomCode, classroomName: selected.classroomName } : t
+        ));
+        setClsChangeModal(null);
+        setNewClsCode('');
+      }
+    } catch (e) { console.error(e); }
+    finally { setClsChanging(false); }
+  };
+
   // 再研修URLコピー
   const [copiedTraineeId, setCopiedTraineeId] = useState('');
   const copyRetrainUrl = (traineeId, operatorCode, classroomCode, track) => {
@@ -654,6 +681,7 @@ export default function OperatorDashboard() {
                         <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">合否</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">修了日</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">有効期限</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">操作</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-green-50">
@@ -685,6 +713,18 @@ export default function OperatorDashboard() {
                                 <RemainingBadge days={calcRemainingDays(r.completionDate)} />
                               </div>
                             ) : <span className="text-gray-300">—</span>}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              onClick={() => copyRetrainUrl(r.id, r.operatorCode || r.memberCode, r.classroomCode, r.track)}
+                              className={`text-xs px-2 py-1 rounded border transition-colors whitespace-nowrap ${
+                                copiedTraineeId === r.id
+                                  ? 'bg-green-700 text-white border-green-700'
+                                  : 'bg-white border-blue-300 text-blue-600 hover:bg-blue-50'
+                              }`}
+                            >
+                              {copiedTraineeId === r.id ? '✓ コピー済' : '🔗 再研修URL'}
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -780,6 +820,12 @@ export default function OperatorDashboard() {
                               <button onClick={() => openStatusModal(t)}
                                 className="text-xs px-2.5 py-1 bg-white border border-green-400 text-green-700 hover:bg-green-50 rounded transition-colors whitespace-nowrap">
                                 ステータス変更
+                              </button>
+                              <button
+                                onClick={() => { setClsChangeModal({ id: t.id, fullName: t.fullName, currentCode: t.classroomCode, currentName: t.classroomName }); setNewClsCode(t.classroomCode || ''); }}
+                                className="text-xs px-2.5 py-1 bg-white border border-orange-300 text-orange-600 hover:bg-orange-50 rounded transition-colors whitespace-nowrap"
+                              >
+                                🏫 教室変更
                               </button>
                               <button
                                 onClick={() => copyRetrainUrl(t.id, t.operatorCode, t.classroomCode, t.track)}
@@ -899,6 +945,55 @@ export default function OperatorDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===== 教室変更モーダル ===== */}
+      {clsChangeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl border border-orange-200 w-full max-w-sm">
+            <div className="px-6 py-4 border-b border-orange-100">
+              <h2 className="text-base font-bold text-gray-900">🏫 所属教室の変更</h2>
+              <p className="text-sm text-gray-500 mt-0.5">{clsChangeModal.fullName}</p>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">現在の教室</p>
+                <p className="text-sm font-semibold text-gray-700">{clsChangeModal.currentName}（{clsChangeModal.currentCode}）</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">変更先の教室</label>
+                <select
+                  value={newClsCode}
+                  onChange={(e) => setNewClsCode(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                >
+                  <option value="">選択してください</option>
+                  {classrooms.map((c) => (
+                    <option key={c.classroomCode} value={c.classroomCode}>
+                      {c.classroomName}（{c.classroomCode}）
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-xs text-gray-400">※ 過去の受講記録はそのまま保持されます。</p>
+            </div>
+            <div className="px-6 pb-5 flex gap-3">
+              <button
+                onClick={handleClassroomChange}
+                disabled={clsChanging || !newClsCode || newClsCode === clsChangeModal.currentCode}
+                className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-sm font-semibold py-2 rounded-lg transition-colors"
+              >
+                {clsChanging ? '変更中...' : '変更する'}
+              </button>
+              <button
+                onClick={() => { setClsChangeModal(null); setNewClsCode(''); }}
+                className="flex-1 border border-gray-300 text-gray-600 text-sm py-2 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                キャンセル
+              </button>
+            </div>
           </div>
         </div>
       )}

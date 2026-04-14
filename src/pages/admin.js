@@ -534,6 +534,7 @@ export default function AdminPage() {
                           { field: 'passed', label: '合否' },
                           { field: 'completionDate', label: '修了日' },
                           { field: 'expiry', label: '有効期限' },
+                          { field: 'action', label: '操作' },
                         ].map((col) => (
                           <th key={col.field} onClick={() => handleSort(col.field)}
                             className="px-4 py-3 text-left text-xs font-semibold text-green-900 cursor-pointer hover:text-green-700 whitespace-nowrap select-none">
@@ -573,6 +574,26 @@ export default function AdminPage() {
                                 <RemainingBadge days={calcRemainingDays(r.completionDate)} />
                               </div>
                             ) : <span className="text-gray-300">—</span>}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {(() => {
+                              const base = typeof window !== 'undefined' ? window.location.origin : '';
+                              const trackParam = r.track === 'manager' ? '&track=manager' : '';
+                              const retrainUrl = `${base}/register?biz=${r.operatorCode || r.memberCode}&cls=${r.classroomCode}${trackParam}`;
+                              const key = `rec-retrain-${r.id || idx}`;
+                              return (
+                                <button
+                                  onClick={() => copyUrl(key, retrainUrl)}
+                                  className={`text-xs px-2 py-1 rounded border transition-colors whitespace-nowrap ${
+                                    copiedKey === key
+                                      ? 'bg-green-700 text-white border-green-700'
+                                      : 'bg-white border-blue-300 text-blue-600 hover:bg-blue-50'
+                                  }`}
+                                >
+                                  {copiedKey === key ? '✓ コピー済' : '🔗 再研修URL'}
+                                </button>
+                              );
+                            })()}
                           </td>
                         </tr>
                       ))}
