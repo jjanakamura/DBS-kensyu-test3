@@ -19,6 +19,9 @@ export default function OperatorDashboard() {
   const [traineeSearch, setTraineeSearch] = useState('');
   const [showRetired, setShowRetired] = useState(false);
 
+  // CSV出力
+  const [csvClassroom, setCsvClassroom] = useState('');
+
   // ステータス変更モーダル
   const [statusModal, setStatusModal] = useState(null);
   const [modalStatus, setModalStatus] = useState('active');
@@ -114,6 +117,52 @@ export default function OperatorDashboard() {
     if (s === 'retired') return 'bg-gray-200 text-gray-600';
     if (s === 'suspended') return 'bg-orange-100 text-orange-700';
     return 'bg-gray-100 text-gray-500';
+  };
+
+  // CSV出力ユーティリティ
+  const downloadCsv = (filename, rows) => {
+    const BOM = '\uFEFF';
+    const csv = BOM + rows
+      .map((r) => r.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+      .join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportRecordsCsv = (classroomFilter) => {
+    const statusMap = { active: '在籍中', retired: '退職済', suspended: '停止中' };
+    const filtered = classroomFilter
+      ? records.filter((r) => r.classroomCode === classroomFilter)
+      : records;
+    const header = [
+      '受講日時', '教室コード', '教室名', '氏名',
+      '研修種別', '得点', '合否', '修了日', '修了番号', '在籍ステータス',
+    ];
+    const rows = filtered.map((r) => {
+      const trainee = trainees.find(
+        (t) => t.fullName === r.fullName && t.operatorCode === (r.operatorCode || r.memberCode)
+      );
+      return [
+        r.submittedAt ? new Date(r.submittedAt).toLocaleString('ja-JP') : '',
+        r.classroomCode || '',
+        r.classroomName || '',
+        r.fullName || '',
+        r.track === 'manager' ? '情報管理責任者研修' : '一般研修',
+        r.score != null ? `${r.score}%` : '',
+        r.passed ? '合格' : '不合格',
+        r.completionDate || '',
+        r.certNumber || '',
+        trainee ? (statusMap[trainee.status] || trainee.status) : '—',
+      ];
+    });
+    const date = new Date().toISOString().slice(0, 10);
+    const label = classroomFilter || '全体';
+    downloadCsv(`受講記録_${auth.operatorCode}_${label}_${date}.csv`, [header, ...rows]);
   };
 
   if (!auth) return null;
@@ -260,6 +309,41 @@ export default function OperatorDashboard() {
         {/* 受講記録 */}
         {!loading && activeTab === 'records' && (
           <>
+            {/* CSV出力バー */}
+            {records.length > 0 && (
+              <div className="bg-white border border-green-200 rounded-xl px-4 py-3 mb-4 flex flex-wrap items-center gap-3">
+                <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">📥 CSV出力</span>
+                <div className="flex flex-wrap items-center gap-2 ml-auto">
+                  {/* 事業者全体 */}
+                  <button
+                    onClick={() => exportRecordsCsv('')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-green-700 hover:bg-green-600 text-white rounded-lg transition-colors whitespace-nowrap">
+                    ↓ 事業者全体
+                  </button>
+                  {/* 教室別 */}
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={csvClassroom}
+                      onChange={(e) => setCsvClassroom(e.target.value)}
+                      className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-500">
+                      <option value="">教室を選択</option>
+                      {classrooms.map((c) => (
+                        <option key={c.classroomCode} value={c.classroomCode}>
+                          {c.classroomName}（{c.classroomCode}）
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => csvClassroom && exportRecordsCsv(csvClassroom)}
+                      disabled={!csvClassroom}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed text-green-700 border border-green-400 rounded-lg transition-colors whitespace-nowrap">
+                      ↓ 教室別
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {records.length === 0 ? (
               <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-xl border border-green-200">
                 受講記録がありません。
