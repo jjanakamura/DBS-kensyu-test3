@@ -9,7 +9,7 @@ const QRCodeCanvas = dynamic(() => import('qrcode.react').then(m => m.QRCodeCanv
  * - タブ①受講記録 ②事業者一覧 ③教室一覧 ④受講者管理
  */
 
-const ADMIN_PASSWORD = 'admin2024';
+// ※ 管理者パスワードは環境変数 ADMIN_PASSWORD で管理（/api/admin-login で検証）
 
 function calcExpiry(completionDate) {
   if (!completionDate) return null;
@@ -108,6 +108,22 @@ export default function AdminPage() {
     return `${base}/register?biz=${operatorCode}&cls=${classroomCode}${trackParam}`;
   };
 
+  // アクセスログ
+  const [accessLogs, setAccessLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logTypeFilter, setLogTypeFilter] = useState('all'); // all | admin | operator | classroom
+  const [logResultFilter, setLogResultFilter] = useState('all'); // all | success | fail
+
+  const fetchAccessLogs = async () => {
+    setLogsLoading(true);
+    try {
+      const res = await fetch('/api/get-access-logs?limit=500');
+      const data = await res.json();
+      setAccessLogs(data.logs || []);
+    } catch (e) { console.error(e); }
+    finally { setLogsLoading(false); }
+  };
+
   // 自動削除（クリーンアップ）
   const [cleanupRunning, setCleanupRunning] = useState(false);
   const [cleanupResult, setCleanupResult]   = useState(null); // 最新実行結果
@@ -149,10 +165,22 @@ export default function AdminPage() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (inputPw !== ADMIN_PASSWORD) { setPwError('パスワードが正しくありません。'); return; }
-    setAuthed(true);
+    setPwError('');
     setLoading(true);
     try {
+      // パスワードをサーバー側で検証（環境変数 ADMIN_PASSWORD と照合）
+      const authRes = await fetch('/api/admin-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: inputPw }),
+      });
+      const authData = await authRes.json();
+      if (!authData.success) {
+        setPwError(authData.message || 'パスワードが正しくありません。');
+        setLoading(false);
+        return;
+      }
+      setAuthed(true);
       const [recRes, opRes, clsRes, trnRes] = await Promise.all([
         fetch('/api/get-records'),
         fetch('/api/get-operators?includePasswords=true'),
@@ -163,7 +191,7 @@ export default function AdminPage() {
       setOperators((await opRes.json()).operators || []);
       setClassrooms((await clsRes.json()).classrooms || []);
       setTrainees((await trnRes.json()).trainees || []);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); setPwError('通信エラーが発生しました。'); }
     finally { setLoading(false); }
   };
 
@@ -460,6 +488,7 @@ export default function AdminPage() {
     { key: 'classrooms', label: '教室一覧', count: classrooms.length },
     { key: 'trainees', label: '受講者管理', count: trainees.length },
     { key: 'cleanup', label: '🗑️ 自動削除', count: null },
+    { key: 'accesslog', label: '📋 アクセスログ', count: null },
   ];
 
   return (
@@ -518,7 +547,7 @@ export default function AdminPage() {
         {/* タブ */}
         <div className="flex gap-1 mb-6 border-b border-green-200">
           {tabs.map((tab) => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+            <button key={tab.key} onClick={() => { setActiveTab(tab.key); if (tab.key === 'accesslog') fetchAccessLogs(); }}
               className={`px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
                 activeTab === tab.key
                   ? 'border-green-700 text-green-800 bg-green-50'
@@ -1165,6 +1194,97 @@ export default function AdminPage() {
               </div>
             </div>
 
+          </div>
+        )}
+
+        {/* ===== ⑥ アクセスログタブ ===== */}
+        {activeTab === 'accesslog' && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl border border-green-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-3 bg-green-50 border-b border-green-100 flex items-center justify-between flex-wrap gap-2">
+                <h2 className="text-sm font-bold text-green-900">📋 アクセスログ（直近500件）</h2>
+                <button onClick={fetchAccessLogs} disabled={logsLoading}
+                  className="text-xs px-3 py-1.5 bg-white border border-green-400 text-green-700 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50">
+                  {logsLoading ? '読み込み中...' : '🔄 再読み込み'}
+                </button>
+              </div>
+
+              {/* フィルター */}
+              <div className="px-5 py-3 border-b border-gray-100 flex flex-wrap gap-3 items-center">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-gray-500">画面種別：</span>
+                  {[['all','すべて'],['admin','管理者'],['operator','事業者'],['classroom','教室']].map(([v,l]) => (
+                    <button key={v} onClick={() => setLogTypeFilter(v)}
+                      className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${logTypeFilter === v ? 'bg-green-700 text-white border-green-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-gray-500">結果：</span>
+                  {[['all','すべて'],['success','成功'],['fail','失敗']].map(([v,l]) => (
+                    <button key={v} onClick={() => setLogResultFilter(v)}
+                      className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${logResultFilter === v ? 'bg-green-700 text-white border-green-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ログテーブル */}
+              <div className="overflow-x-auto">
+                {accessLogs.length === 0 && !logsLoading ? (
+                  <p className="text-center text-sm text-gray-400 py-10">ログがありません。ログインが発生すると記録されます。</p>
+                ) : (
+                  <table className="min-w-full text-xs">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-4 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">日時</th>
+                        <th className="px-4 py-2 text-left font-semibold text-gray-600">画面</th>
+                        <th className="px-4 py-2 text-left font-semibold text-gray-600">対象コード</th>
+                        <th className="px-4 py-2 text-center font-semibold text-gray-600">結果</th>
+                        <th className="px-4 py-2 text-left font-semibold text-gray-600">失敗理由</th>
+                        <th className="px-4 py-2 text-left font-semibold text-gray-600">IPアドレス</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {accessLogs
+                        .filter(l => logTypeFilter === 'all' || l.type === logTypeFilter)
+                        .filter(l => logResultFilter === 'all' || l.result === logResultFilter)
+                        .map((log) => (
+                          <tr key={log.id} className={log.result === 'fail' ? 'bg-red-50' : ''}>
+                            <td className="px-4 py-2 text-gray-600 whitespace-nowrap font-mono">
+                              {new Date(log.timestamp).toLocaleString('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' })}
+                            </td>
+                            <td className="px-4 py-2 whitespace-nowrap">
+                              {log.type === 'admin' && <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold">管理者</span>}
+                              {log.type === 'operator' && <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">事業者</span>}
+                              {log.type === 'classroom' && <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">教室</span>}
+                            </td>
+                            <td className="px-4 py-2 font-mono text-gray-700">{log.target}</td>
+                            <td className="px-4 py-2 text-center">
+                              {log.result === 'success'
+                                ? <span className="text-green-700 font-bold">✅ 成功</span>
+                                : <span className="text-red-600 font-bold">❌ 失敗</span>}
+                            </td>
+                            <td className="px-4 py-2 text-gray-500">{log.reason || '—'}</td>
+                            <td className="px-4 py-2 font-mono text-gray-400">{log.ip}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              <div className="px-4 py-2 border-t border-green-100 bg-green-50 text-xs text-gray-400 text-right">
+                {accessLogs.filter(l => (logTypeFilter === 'all' || l.type === logTypeFilter) && (logResultFilter === 'all' || l.result === logResultFilter)).length} 件表示
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 text-xs text-blue-800 space-y-1">
+              <p>📝 <strong>記録内容：</strong>ログイン日時・画面種別・対象コード・成否・失敗理由・IPアドレス</p>
+              <p>🔒 <strong>プライバシー：</strong>氏名・パスワード等の個人情報・機密情報は一切記録しません。</p>
+              <p>⚠️ <strong>注意：</strong>現在はサーバーのファイルに保存しています。Supabase移行後は永続的に蓄積されます。</p>
+            </div>
           </div>
         )}
 

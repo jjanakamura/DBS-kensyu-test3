@@ -1,5 +1,6 @@
 import fs from 'fs';
 import { getDataPath } from '../../lib/dataPath';
+import { writeAccessLog } from '../../lib/accessLog';
 
 /**
  * 教室ダッシュボード ログイン API
@@ -35,9 +36,11 @@ export default function handler(req, res) {
       (o) => o.operatorCode.trim().toUpperCase() === normalizedOp
     );
     if (!operator) {
+      writeAccessLog({ type: 'classroom', target: `${normalizedOp}/${normalizedCls}`, result: 'fail', reason: '事業者コード不存在', req });
       return res.status(200).json({ success: false, message: '事業者コードが見つかりません。' });
     }
     if (operator.status === 'inactive') {
+      writeAccessLog({ type: 'classroom', target: `${normalizedOp}/${normalizedCls}`, result: 'fail', reason: '事業者アカウント停止中', req });
       return res.status(200).json({ success: false, message: 'このアカウントは停止されています。事務局にお問い合わせください。' });
     }
 
@@ -48,15 +51,18 @@ export default function handler(req, res) {
         c.status === 'active'
     );
     if (!classroom) {
+      writeAccessLog({ type: 'classroom', target: `${normalizedOp}/${normalizedCls}`, result: 'fail', reason: '教室コード不存在', req });
       return res.status(200).json({ success: false, message: '教室コードが見つかりません。' });
     }
 
     // パスワード確認（未設定の場合は classroomCode をデフォルトとする）
     const storedPw = classroom.classroomPassword || classroom.classroomCode;
     if (storedPw !== String(password)) {
+      writeAccessLog({ type: 'classroom', target: `${normalizedOp}/${normalizedCls}`, result: 'fail', reason: 'パスワード不正', req });
       return res.status(200).json({ success: false, message: 'パスワードが正しくありません。' });
     }
 
+    writeAccessLog({ type: 'classroom', target: `${normalizedOp}/${normalizedCls}`, result: 'success', req });
     return res.status(200).json({
       success: true,
       operatorCode: operator.operatorCode,

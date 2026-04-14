@@ -1,5 +1,6 @@
 import fs from 'fs';
 import { getDataPath } from '../../lib/dataPath';
+import { writeAccessLog } from '../../lib/accessLog';
 
 /**
  * 事業者管理画面ログイン API
@@ -33,17 +34,21 @@ export default function handler(req, res) {
     );
 
     if (!operator) {
+      writeAccessLog({ type: 'operator', target: normalizedCode, result: 'fail', reason: 'コード不存在', req });
       return res.status(200).json({ success: false, message: '事業者コードが見つかりません。' });
     }
 
     if (operator.status === 'inactive') {
+      writeAccessLog({ type: 'operator', target: normalizedCode, result: 'fail', reason: 'アカウント停止中', req });
       return res.status(200).json({ success: false, message: 'このアカウントは現在停止されています。事務局にお問い合わせください。' });
     }
 
     if (operator.adminPassword !== password) {
+      writeAccessLog({ type: 'operator', target: normalizedCode, result: 'fail', reason: 'パスワード不正', req });
       return res.status(200).json({ success: false, message: 'パスワードが正しくありません。' });
     }
 
+    writeAccessLog({ type: 'operator', target: normalizedCode, result: 'success', req });
     return res.status(200).json({
       success: true,
       operatorCode: operator.operatorCode,
