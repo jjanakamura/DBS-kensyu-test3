@@ -69,147 +69,66 @@
     "completionDate": null,
     "certNumber": null,
     "answers": [
-      {
-        "questionId": 18,
-        "questionText": "【ケーススタディ】ある講師が授業後に特定の生徒だけを個室に呼び、二人きりになる状況が繰り返されています。管理者としてまず取るべき対応として最も適切なものはどれですか？",
-        "selectedText": "その講師の授業評価が高ければ特に問題はないと判断し放置する",
-        "correctText": "事実確認を行い、二人きりにならないルールを徹底し、必要に応じて関係機関に相談する",
-        "isCorrect": false
-      },
-      {
-        "questionId": 11,
-        "questionText": "【実務判断】あなたの塾に新しいアルバイト講師（週2回勤務）の採用が決まりました。採用担当者として最初に取るべき対応として最も適切なものはどれですか？",
-        "selectedText": "本人に性犯罪歴がないか口頭で確認し「ない」との回答があれば申請を省略できる",
-        "correctText": "子どもと接する業務に就かせる前に日本版DBSの確認申請を行い、性犯罪歴がないことを確認する",
-        "isCorrect": false
-      },
-      {
-        "questionId": 1,
-        "questionText": "こども性暴力防止法（日本版DBS）の主な目的として正しいものはどれですか？",
-        "selectedText": "教育機関における学力向上のための指導制度を全国統一すること",
-        "correctText": "子どもと接する職場において性犯罪歴のある者の就業を防止し、子どもの安全を守ること",
-        "isCorrect": false
-      },
-      {
-        "questionId": 19,
-        "questionText": "【ケーススタディ】保護者から「先生に対して子どもが不安を感じていると言っている」という相談を受けました。事業者として最初に取るべき対応として最も適切なものはどれですか？",
-        "selectedText": "外部には漏れないよう内部だけで対処し記録も残さない",
-        "correctText": "保護者と子どもの話をしっかり聴き取り、事実確認と適切な対応を迅速に行う",
-        "isCorrect": false
-      },
-      {
-        "questionId": 4,
-        "questionText": "日本版DBSの確認申請によって照会・確認される内容として正しいものはどれですか？",
-        "selectedText": "健康診断の結果および精神的な問題の有無",
-        "correctText": "性犯罪等に関する刑の言渡し・猶予等の前歴の有無",
-        "isCorrect": false
-      },
-      {
-        "questionId": 10,
-        "questionText": "【動画確認】日本版DBSの制度趣旨として動画内で説明されていた内容として最も適切なものはどれですか？",
-        "selectedText": "子どもの学力向上のために指導者の資格取得を義務化する制度",
-        "correctText": "過去に性犯罪等を犯した者が子どもと接する職場に就くことを防ぐための仕組み",
-        "isCorrect": false
-      },
-      {
-        "questionId": 8,
-        "questionText": "日本版DBS制度の対象となる民間事業者として正しいものはどれですか？",
-        "selectedText": "飲食店・コンビニエンスストアなど子どもが来店する全ての店舗",
-        "correctText": "学習塾・習い事教室・保育施設など子どもを対象とする教育・保育事業者",
-        "isCorrect": false
-      },
-      {
-        "questionId": 3,
-        "questionText": "日本版DBS対象事業者が新たに採用した者を「子どもと接する業務」に就かせる前に行うべき確認申請のタイミングとして正しいものはどれですか？",
-        "selectedText": "子どもと接する業務に就かせる前",
-        "correctText": "子どもと接する業務に就かせる前",
-        "isCorrect": true
-      },
-      {
-        "questionId": 14,
-        "questionText": "【実務判断】日本版DBSの確認申請情報（性犯罪歴の有無）を取り扱う際の個人情報保護の観点として正しいものはどれですか？",
-        "selectedText": "確認申請結果はスプレッドシートで一括管理し全管理職が閲覧できるようにする",
-        "correctText": "採用・配置の目的以外に利用せず、厳重に管理・保護する義務がある",
-        "isCorrect": false
-      },
-      {
-        "questionId": 13,
-        "questionText": "【実務判断】確認申請の結果が届くまでの期間中（申請中）に、新規採用の講師に子どもと接する業務をさせることはできますか？",
-        "selectedText": "申請手続きを行っていれば確認中でも業務に就かせることができる",
-        "correctText": "申請中は業務に就かせることができない",
-        "isCorrect": false
-      },
-      {
-        "questionId": 12,
-        "questionText": "【実務判断】イベントの補助スタッフとして子どもと接するボランティアを受け入れる際、日本版DBSの観点から正しい対応はどれですか？",
-        "selectedText": "子どもと接する業務に従事する場合はボランティアも確認申請の対象となる",
-        "correctText": "子どもと接する業務に従事する場合はボランティアも確認申請の対象となる",
-        "isCorrect": true
-      },
-      {
-        "questionId": 20,
-        "questionText": "日本版DBSを含む子どもの安全確保に向けた事業者の総合的な姿勢として最も適切なものはどれですか？",
-        "selectedText": "保護者からの苦情があった場合のみ対応すればよい",
-        "correctText": "法的義務の履行にとどまらず、子どもの安全を守るための継続的な取り組みと組織文化の醸成が重要",
-        "isCorrect": false
-      },
-      {
-        "questionId": 7,
-        "questionText": "日本版DBSにおける確認申請の更新（再確認）について正しい説明はどれですか？",
-        "selectedText": "転職・異動がある場合のみ再確認が必要",
-        "correctText": "一定期間ごとに定期的な再確認が必要",
-        "isCorrect": false
-      },
-      {
-        "questionId": 5,
-        "questionText": "日本版DBS制度において、事業者が確認申請義務を怠った場合に行政から受ける可能性がある措置として正しいものはどれですか？",
-        "selectedText": "代表者の即時逮捕および刑事訴追",
-        "correctText": "改善命令および事業者名の公表",
-        "isCorrect": false
-      },
-      {
-        "questionId": 16,
-        "questionText": "子どもへの性的暴力・ハラスメントを防止するため、事業者として日常的に取り組むべき対策として最も適切なものはどれですか？",
-        "selectedText": "問題が発生した場合のみ対策を講じる",
-        "correctText": "定期的な研修・マニュアル整備・相談窓口設置など継続的な対策を講じる",
-        "isCorrect": false
-      },
-      {
-        "questionId": 2,
-        "questionText": "日本版DBS制度において、確認申請の対象となる「子どもと接する業務」に従事する者として正しいものはどれですか？",
-        "selectedText": "雇用形態（正規・非正規・アルバイト・ボランティア等）を問わず、子どもと直接接する全ての者",
-        "correctText": "雇用形態（正規・非正規・アルバイト・ボランティア等）を問わず、子どもと直接接する全ての者",
-        "isCorrect": true
-      },
-      {
-        "questionId": 6,
-        "questionText": "日本版DBSに基づく確認申請の運用主体（実施機関）として正しいものはどれですか？",
-        "selectedText": "文部科学省の外局である文化庁",
-        "correctText": "こども家庭庁（国の指定する機関）",
-        "isCorrect": false
-      },
-      {
-        "questionId": 9,
-        "questionText": "確認申請の結果、性犯罪歴があることが判明した者について、事業者として取るべき対応として最も適切なものはどれですか？",
-        "selectedText": "本人の反省の態度を確認した上で業務継続の可否を判断する",
-        "correctText": "子どもと接する業務に就かせてはならない",
-        "isCorrect": false
-      },
-      {
-        "questionId": 15,
-        "questionText": "【実務判断】既存の正社員スタッフについて、日本版DBS施行後の対応として正しいものはどれですか？",
-        "selectedText": "施行後の一定期間内に既存スタッフの確認申請も順次実施する必要がある",
-        "correctText": "施行後の一定期間内に既存スタッフの確認申請も順次実施する必要がある",
-        "isCorrect": true
-      },
-      {
-        "questionId": 17,
-        "questionText": "個人情報保護法の観点から、受講者・保護者の個人情報の取り扱いとして正しいものはどれですか？",
-        "selectedText": "保護者の許可なく子どもの成績情報を他塾と共有してよい",
-        "correctText": "利用目的を特定・明示し、目的外利用を行わず適切に管理する義務がある",
-        "isCorrect": false
-      }
+      { "questionId": 18, "questionText": "【ケーススタディ】ある講師が授業後に特定の生徒だけを個室に呼び、二人きりになる状況が繰り返されています。管理者としてまず取るべき対応として最も適切なものはどれですか？", "selectedText": "その講師の授業評価が高ければ特に問題はないと判断し放置する", "correctText": "事実確認を行い、二人きりにならないルールを徹底し、必要に応じて関係機関に相談する", "isCorrect": false },
+      { "questionId": 11, "questionText": "【実務判断】あなたの塾に新しいアルバイト講師（週2回勤務）の採用が決まりました。採用担当者として最初に取るべき対応として最も適切なものはどれですか？", "selectedText": "本人に性犯罪歴がないか口頭で確認し「ない」との回答があれば申請を省略できる", "correctText": "子どもと接する業務に就かせる前に日本版DBSの確認申請を行い、性犯罪歴がないことを確認する", "isCorrect": false },
+      { "questionId": 1, "questionText": "こども性暴力防止法（日本版DBS）の主な目的として正しいものはどれですか？", "selectedText": "教育機関における学力向上のための指導制度を全国統一すること", "correctText": "子どもと接する職場において性犯罪歴のある者の就業を防止し、子どもの安全を守ること", "isCorrect": false },
+      { "questionId": 3, "questionText": "日本版DBS対象事業者が新たに採用した者を「子どもと接する業務」に就かせる前に行うべき確認申請のタイミングとして正しいものはどれですか？", "selectedText": "子どもと接する業務に就かせる前", "correctText": "子どもと接する業務に就かせる前", "isCorrect": true },
+      { "questionId": 12, "questionText": "【実務判断】イベントの補助スタッフとして子どもと接するボランティアを受け入れる際、日本版DBSの観点から正しい対応はどれですか？", "selectedText": "子どもと接する業務に従事する場合はボランティアも確認申請の対象となる", "correctText": "子どもと接する業務に従事する場合はボランティアも確認申請の対象となる", "isCorrect": true },
+      { "questionId": 15, "questionText": "【実務判断】既存の正社員スタッフについて、日本版DBS施行後の対応として正しいものはどれですか？", "selectedText": "施行後の一定期間内に既存スタッフの確認申請も順次実施する必要がある", "correctText": "施行後の一定期間内に既存スタッフの確認申請も順次実施する必要がある", "isCorrect": true },
+      { "questionId": 2, "questionText": "日本版DBS制度において、確認申請の対象となる「子どもと接する業務」に従事する者として正しいものはどれですか？", "selectedText": "雇用形態（正規・非正規・アルバイト・ボランティア等）を問わず、子どもと直接接する全ての者", "correctText": "雇用形態（正規・非正規・アルバイト・ボランティア等）を問わず、子どもと直接接する全ての者", "isCorrect": true },
+      { "questionId": 4, "questionText": "日本版DBSの確認申請によって照会・確認される内容として正しいものはどれですか？", "selectedText": "健康診断の結果および精神的な問題の有無", "correctText": "性犯罪等に関する刑の言渡し・猶予等の前歴の有無", "isCorrect": false },
+      { "questionId": 5, "questionText": "日本版DBS制度において、事業者が確認申請義務を怠った場合に行政から受ける可能性がある措置として正しいものはどれですか？", "selectedText": "代表者の即時逮捕および刑事訴追", "correctText": "改善命令および事業者名の公表", "isCorrect": false },
+      { "questionId": 6, "questionText": "日本版DBSに基づく確認申請の運用主体（実施機関）として正しいものはどれですか？", "selectedText": "文部科学省の外局である文化庁", "correctText": "こども家庭庁（国の指定する機関）", "isCorrect": false },
+      { "questionId": 7, "questionText": "日本版DBSにおける確認申請の更新（再確認）について正しい説明はどれですか？", "selectedText": "転職・異動がある場合のみ再確認が必要", "correctText": "一定期間ごとに定期的な再確認が必要", "isCorrect": false },
+      { "questionId": 8, "questionText": "日本版DBS制度の対象となる民間事業者として正しいものはどれですか？", "selectedText": "飲食店・コンビニエンスストアなど子どもが来店する全ての店舗", "correctText": "学習塾・習い事教室・保育施設など子どもを対象とする教育・保育事業者", "isCorrect": false },
+      { "questionId": 9, "questionText": "確認申請の結果、性犯罪歴があることが判明した者について、事業者として取るべき対応として最も適切なものはどれですか？", "selectedText": "本人の反省の態度を確認した上で業務継続の可否を判断する", "correctText": "子どもと接する業務に就かせてはならない", "isCorrect": false },
+      { "questionId": 10, "questionText": "【動画確認】日本版DBSの制度趣旨として動画内で説明されていた内容として最も適切なものはどれですか？", "selectedText": "子どもの学力向上のために指導者の資格取得を義務化する制度", "correctText": "過去に性犯罪等を犯した者が子どもと接する職場に就くことを防ぐための仕組み", "isCorrect": false },
+      { "questionId": 13, "questionText": "【実務判断】確認申請の結果が届くまでの期間中（申請中）に、新規採用の講師に子どもと接する業務をさせることはできますか？", "selectedText": "申請手続きを行っていれば確認中でも業務に就かせることができる", "correctText": "申請中は業務に就かせることができない", "isCorrect": false },
+      { "questionId": 14, "questionText": "【実務判断】日本版DBSの確認申請情報（性犯罪歴の有無）を取り扱う際の個人情報保護の観点として正しいものはどれですか？", "selectedText": "確認申請結果はスプレッドシートで一括管理し全管理職が閲覧できるようにする", "correctText": "採用・配置の目的以外に利用せず、厳重に管理・保護する義務がある", "isCorrect": false },
+      { "questionId": 16, "questionText": "子どもへの性的暴力・ハラスメントを防止するため、事業者として日常的に取り組むべき対策として最も適切なものはどれですか？", "selectedText": "問題が発生した場合のみ対策を講じる", "correctText": "定期的な研修・マニュアル整備・相談窓口設置など継続的な対策を講じる", "isCorrect": false },
+      { "questionId": 17, "questionText": "個人情報保護法の観点から、受講者・保護者の個人情報の取り扱いとして正しいものはどれですか？", "selectedText": "保護者の許可なく子どもの成績情報を他塾と共有してよい", "correctText": "利用目的を特定・明示し、目的外利用を行わず適切に管理する義務がある", "isCorrect": false },
+      { "questionId": 19, "questionText": "【ケーススタディ】保護者から「先生に対して子どもが不安を感じていると言っている」という相談を受けました。事業者として最初に取るべき対応として最も適切なものはどれですか？", "selectedText": "外部には漏れないよう内部だけで対処し記録も残さない", "correctText": "保護者と子どもの話をしっかり聴き取り、事実確認と適切な対応を迅速に行う", "isCorrect": false },
+      { "questionId": 20, "questionText": "日本版DBSを含む子どもの安全確保に向けた事業者の総合的な姿勢として最も適切なものはどれですか？", "selectedText": "保護者からの苦情があった場合のみ対応すればよい", "correctText": "法的義務の履行にとどまらず、子どもの安全を守るための継続的な取り組みと組織文化の醸成が重要", "isCorrect": false }
     ],
     "submittedAt": "2026-04-12T18:04:58.756Z"
+  },
+  {
+    "id": "REC-1776099999999-0003",
+    "memberCode": "A001",
+    "operatorCode": "A001",
+    "classroomCode": "A001-C01",
+    "companyName": "株式会社中村",
+    "classroomName": "渋谷校",
+    "fullName": "山田 太郎",
+    "email": "yamada@example.com",
+    "score": 80,
+    "correctCount": 16,
+    "totalQuestions": 20,
+    "passed": true,
+    "completionDate": "2026年4月14日",
+    "certNumber": "JJA-20260414-3847",
+    "answers": [
+      { "questionId": 1,  "questionText": "こども性暴力防止法（日本版DBS）の主な目的として正しいものはどれですか？", "selectedText": "子どもと接する職場において性犯罪歴のある者の就業を防止し、子どもの安全を守ること", "correctText": "子どもと接する職場において性犯罪歴のある者の就業を防止し、子どもの安全を守ること", "isCorrect": true },
+      { "questionId": 2,  "questionText": "日本版DBS制度において、確認申請の対象となる「子どもと接する業務」に従事する者として正しいものはどれですか？", "selectedText": "雇用形態（正規・非正規・アルバイト・ボランティア等）を問わず、子どもと直接接する全ての者", "correctText": "雇用形態（正規・非正規・アルバイト・ボランティア等）を問わず、子どもと直接接する全ての者", "isCorrect": true },
+      { "questionId": 3,  "questionText": "日本版DBS対象事業者が新たに採用した者を「子どもと接する業務」に就かせる前に行うべき確認申請のタイミングとして正しいものはどれですか？", "selectedText": "子どもと接する業務に就かせる前", "correctText": "子どもと接する業務に就かせる前", "isCorrect": true },
+      { "questionId": 4,  "questionText": "日本版DBSの確認申請によって照会・確認される内容として正しいものはどれですか？", "selectedText": "性犯罪等に関する刑の言渡し・猶予等の前歴の有無", "correctText": "性犯罪等に関する刑の言渡し・猶予等の前歴の有無", "isCorrect": true },
+      { "questionId": 5,  "questionText": "日本版DBS制度において、事業者が確認申請義務を怠った場合に行政から受ける可能性がある措置として正しいものはどれですか？", "selectedText": "改善命令および事業者名の公表", "correctText": "改善命令および事業者名の公表", "isCorrect": true },
+      { "questionId": 6,  "questionText": "日本版DBSに基づく確認申請の運用主体（実施機関）として正しいものはどれですか？", "selectedText": "こども家庭庁（国の指定する機関）", "correctText": "こども家庭庁（国の指定する機関）", "isCorrect": true },
+      { "questionId": 7,  "questionText": "日本版DBSにおける確認申請の更新（再確認）について正しい説明はどれですか？", "selectedText": "一定期間ごとに定期的な再確認が必要", "correctText": "一定期間ごとに定期的な再確認が必要", "isCorrect": true },
+      { "questionId": 8,  "questionText": "日本版DBS制度の対象となる民間事業者として正しいものはどれですか？", "selectedText": "学習塾・習い事教室・保育施設など子どもを対象とする教育・保育事業者", "correctText": "学習塾・習い事教室・保育施設など子どもを対象とする教育・保育事業者", "isCorrect": true },
+      { "questionId": 9,  "questionText": "確認申請の結果、性犯罪歴があることが判明した者について、事業者として取るべき対応として最も適切なものはどれですか？", "selectedText": "子どもと接する業務に就かせてはならない", "correctText": "子どもと接する業務に就かせてはならない", "isCorrect": true },
+      { "questionId": 10, "questionText": "【動画確認】日本版DBSの制度趣旨として動画内で説明されていた内容として最も適切なものはどれですか？", "selectedText": "過去に性犯罪等を犯した者が子どもと接する職場に就くことを防ぐための仕組み", "correctText": "過去に性犯罪等を犯した者が子どもと接する職場に就くことを防ぐための仕組み", "isCorrect": true },
+      { "questionId": 11, "questionText": "【実務判断】あなたの塾に新しいアルバイト講師（週2回勤務）の採用が決まりました。採用担当者として最初に取るべき対応として最も適切なものはどれですか？", "selectedText": "子どもと接する業務に就かせる前に日本版DBSの確認申請を行い、性犯罪歴がないことを確認する", "correctText": "子どもと接する業務に就かせる前に日本版DBSの確認申請を行い、性犯罪歴がないことを確認する", "isCorrect": true },
+      { "questionId": 12, "questionText": "【実務判断】イベントの補助スタッフとして子どもと接するボランティアを受け入れる際、日本版DBSの観点から正しい対応はどれですか？", "selectedText": "子どもと接する業務に従事する場合はボランティアも確認申請の対象となる", "correctText": "子どもと接する業務に従事する場合はボランティアも確認申請の対象となる", "isCorrect": true },
+      { "questionId": 13, "questionText": "【実務判断】確認申請の結果が届くまでの期間中（申請中）に、新規採用の講師に子どもと接する業務をさせることはできますか？", "selectedText": "申請中は業務に就かせることができない", "correctText": "申請中は業務に就かせることができない", "isCorrect": true },
+      { "questionId": 14, "questionText": "【実務判断】日本版DBSの確認申請情報（性犯罪歴の有無）を取り扱う際の個人情報保護の観点として正しいものはどれですか？", "selectedText": "採用・配置の目的以外に利用せず、厳重に管理・保護する義務がある", "correctText": "採用・配置の目的以外に利用せず、厳重に管理・保護する義務がある", "isCorrect": true },
+      { "questionId": 15, "questionText": "【実務判断】既存の正社員スタッフについて、日本版DBS施行後の対応として正しいものはどれですか？", "selectedText": "施行後の一定期間内に既存スタッフの確認申請も順次実施する必要がある", "correctText": "施行後の一定期間内に既存スタッフの確認申請も順次実施する必要がある", "isCorrect": true },
+      { "questionId": 16, "questionText": "子どもへの性的暴力・ハラスメントを防止するため、事業者として日常的に取り組むべき対策として最も適切なものはどれですか？", "selectedText": "定期的な研修・マニュアル整備・相談窓口設置など継続的な対策を講じる", "correctText": "定期的な研修・マニュアル整備・相談窓口設置など継続的な対策を講じる", "isCorrect": true },
+      { "questionId": 17, "questionText": "個人情報保護法の観点から、受講者・保護者の個人情報の取り扱いとして正しいものはどれですか？", "selectedText": "利用目的を特定・明示し、目的外利用を行わず適切に管理する義務がある", "correctText": "利用目的を特定・明示し、目的外利用を行わず適切に管理する義務がある", "isCorrect": true },
+      { "questionId": 18, "questionText": "【ケーススタディ】ある講師が授業後に特定の生徒だけを個室に呼び、二人きりになる状況が繰り返されています。管理者としてまず取るべき対応として最も適切なものはどれですか？", "selectedText": "事実確認を行い、二人きりにならないルールを徹底し、必要に応じて関係機関に相談する", "correctText": "事実確認を行い、二人きりにならないルールを徹底し、必要に応じて関係機関に相談する", "isCorrect": true },
+      { "questionId": 19, "questionText": "【ケーススタディ】保護者から「先生に対して子どもが不安を感じていると言っている」という相談を受けました。事業者として最初に取るべき対応として最も適切なものはどれですか？", "selectedText": "保護者と子どもの話をしっかり聴き取り、事実確認と適切な対応を迅速に行う", "correctText": "保護者と子どもの話をしっかり聴き取り、事実確認と適切な対応を迅速に行う", "isCorrect": true },
+      { "questionId": 20, "questionText": "日本版DBSを含む子どもの安全確保に向けた事業者の総合的な姿勢として最も適切なものはどれですか？", "selectedText": "法的義務の履行にとどまらず、子どもの安全を守るための継続的な取り組みと組織文化の醸成が重要", "correctText": "法的義務の履行にとどまらず、子どもの安全を守るための継続的な取り組みと組織文化の醸成が重要", "isCorrect": true }
+    ],
+    "submittedAt": "2026-04-14T09:00:00.000Z"
   }
 ]
