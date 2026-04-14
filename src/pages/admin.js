@@ -108,6 +108,36 @@ export default function AdminPage() {
     return `${base}/register?biz=${operatorCode}&cls=${classroomCode}${trackParam}`;
   };
 
+  // 自動削除（クリーンアップ）
+  const [cleanupRunning, setCleanupRunning] = useState(false);
+  const [cleanupResult, setCleanupResult]   = useState(null); // 最新実行結果
+  const [cleanupDryResult, setCleanupDryResult] = useState(null); // 試算結果
+
+  const runCleanupApi = async (dryRun) => {
+    setCleanupRunning(true);
+    try {
+      const res = await fetch('/api/cron/cleanup-trainees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dryRun }),
+      });
+      const data = await res.json();
+      if (dryRun) {
+        setCleanupDryResult(data);
+      } else {
+        setCleanupResult(data);
+        setCleanupDryResult(null);
+        // 受講者一覧を再取得して画面を更新
+        const trnRes = await fetch('/api/get-trainees?includeRetired=true');
+        setTrainees((await trnRes.json()).trainees || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setCleanupRunning(false);
+    }
+  };
+
   // 新規事業者登録フォーム
   const [showAddOpForm, setShowAddOpForm]   = useState(false);
   const [newOpCode, setNewOpCode]           = useState('');
@@ -429,6 +459,7 @@ export default function AdminPage() {
     { key: 'operators', label: '事業者一覧', count: operators.length },
     { key: 'classrooms', label: '教室一覧', count: classrooms.length },
     { key: 'trainees', label: '受講者管理', count: trainees.length },
+    { key: 'cleanup', label: '🗑️ 自動削除', count: null },
   ];
 
   return (
@@ -494,9 +525,11 @@ export default function AdminPage() {
                   : 'border-transparent text-gray-500 hover:text-green-700 hover:bg-green-50'
               }`}>
               {tab.label}
-              <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${activeTab === tab.key ? 'bg-green-200 text-green-800' : 'bg-gray-100 text-gray-500'}`}>
-                {tab.count}
-              </span>
+              {tab.count !== null && (
+                <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${activeTab === tab.key ? 'bg-green-200 text-green-800' : 'bg-gray-100 text-gray-500'}`}>
+                  {tab.count}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -1023,6 +1056,116 @@ export default function AdminPage() {
               </div>
             )}
           </>
+        )}
+
+        {/* ===== ⑤ 自動削除タブ ===== */}
+        {activeTab === 'cleanup' && (
+          <div className="space-y-5">
+
+            {/* 削除ルール説明 */}
+            <div className="bg-white rounded-xl border border-green-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-3 bg-green-50 border-b border-green-100">
+                <h2 className="text-sm font-bold text-green-900">📋 自動削除ルール（JIS Q 15001 / 個人情報保護法 準拠）</h2>
+              </div>
+              <div className="p-5 space-y-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p className="text-xs font-bold text-red-800 mb-1">ルール①　停止中</p>
+                    <p className="text-xs text-red-700">ステータスが「停止中」に変更されてから</p>
+                    <p className="text-2xl font-black text-red-600 my-1">30日</p>
+                    <p className="text-xs text-red-700">経過後に自動削除</p>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <p className="text-xs font-bold text-amber-800 mb-1">ルール②　在籍中・有効期限切れ</p>
+                    <p className="text-xs text-amber-700">研修の有効期限が切れてから</p>
+                    <p className="text-2xl font-black text-amber-600 my-1">30日</p>
+                    <p className="text-xs text-amber-700">経過後に自動削除（再研修未完了）</p>
+                  </div>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <p className="text-xs font-bold text-gray-700 mb-1">ルール③　退職済み</p>
+                    <p className="text-xs text-gray-600">ステータスが「退職済み」に変更されてから</p>
+                    <p className="text-2xl font-black text-gray-500 my-1">90日</p>
+                    <p className="text-xs text-gray-600">経過後に自動削除</p>
+                  </div>
+                </div>
+                <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-2.5 text-xs text-blue-800 space-y-0.5">
+                  <p>🕑 <strong>自動実行：</strong>毎日 午前11時（日本時間）に Vercel Cron Job が自動実行します。</p>
+                  <p>🗂 <strong>削除内容：</strong>受講者プロファイル（trainees）と受講記録（records）を両方削除します。</p>
+                  <p>📝 <strong>削除ログ：</strong>「誰を・いつ・なぜ削除したか」を ID のみで記録します（個人情報は含みません）。</p>
+                </div>
+              </div>
+            </div>
+
+            {/* 手動実行パネル */}
+            <div className="bg-white rounded-xl border border-green-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-3 bg-green-50 border-b border-green-100">
+                <h2 className="text-sm font-bold text-green-900">🔧 手動実行</h2>
+              </div>
+              <div className="p-5 space-y-4">
+                <p className="text-xs text-gray-600">通常は自動実行されますが、今すぐ実行したい場合は下のボタンを使用してください。</p>
+
+                <div className="flex flex-wrap gap-3">
+                  {/* 試算（ドライラン） */}
+                  <button
+                    onClick={() => runCleanupApi(true)}
+                    disabled={cleanupRunning}
+                    className="px-4 py-2 text-sm font-semibold bg-white border border-blue-400 text-blue-700 hover:bg-blue-50 disabled:opacity-50 rounded-lg transition-colors"
+                  >
+                    {cleanupRunning ? '処理中...' : '🔍 削除対象を確認する（試算・削除しない）'}
+                  </button>
+
+                  {/* 本番実行 */}
+                  <button
+                    onClick={() => {
+                      if (!window.confirm('削除ルールに該当する受講者データを実際に削除します。\nこの操作は取り消せません。実行しますか？')) return;
+                      runCleanupApi(false);
+                    }}
+                    disabled={cleanupRunning}
+                    className="px-4 py-2 text-sm font-semibold bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 rounded-lg transition-colors"
+                  >
+                    {cleanupRunning ? '処理中...' : '🗑️ 今すぐ削除を実行する'}
+                  </button>
+                </div>
+
+                {/* 試算結果 */}
+                {cleanupDryResult && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-xs space-y-2">
+                    <p className="font-bold text-blue-800">🔍 試算結果（実際には削除していません）</p>
+                    <p className="text-blue-700">対象受講者数: <strong className="text-xl text-blue-900">{cleanupDryResult.deletedTraineesCount} 名</strong>（全 {cleanupDryResult.totalTrainees} 名中）</p>
+                    {cleanupDryResult.deletedTraineesCount === 0 ? (
+                      <p className="text-green-700 font-semibold">✅ 削除対象はいません。</p>
+                    ) : (
+                      <div className="space-y-1">
+                        <p className="font-semibold text-blue-800">削除対象一覧：</p>
+                        <div className="max-h-48 overflow-y-auto space-y-1">
+                          {cleanupDryResult.deletedItems.map((item, i) => (
+                            <div key={i} className="bg-white border border-blue-100 rounded px-3 py-1.5">
+                              <span className="font-mono text-gray-500 mr-2">{item.id}</span>
+                              <span className="text-red-700">{item.reason}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 実行結果 */}
+                {cleanupResult && (
+                  <div className={`border rounded-lg p-4 text-xs space-y-1 ${cleanupResult.deletedTraineesCount > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+                    <p className={`font-bold ${cleanupResult.deletedTraineesCount > 0 ? 'text-red-800' : 'text-green-800'}`}>
+                      {cleanupResult.deletedTraineesCount > 0 ? '🗑️ 削除完了' : '✅ 削除対象なし'}
+                    </p>
+                    <p>実行日時: {new Date(cleanupResult.runAt).toLocaleString('ja-JP')}</p>
+                    <p>削除受講者数: <strong>{cleanupResult.deletedTraineesCount} 名</strong></p>
+                    <p>削除受講記録数: <strong>{cleanupResult.deletedRecordsCount} 件</strong></p>
+                    <p>残存受講者数: {cleanupResult.keptCount} 名</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
         )}
 
         <p className="mt-6 text-xs text-gray-400 text-center">
