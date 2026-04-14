@@ -63,6 +63,19 @@ export default function AdminPage() {
   // パスワード表示トグル
   const [showPasswords, setShowPasswords] = useState(false);
 
+  // 事業者パスワード変更モーダル
+  const [pwChangeModal, setPwChangeModal] = useState(null); // { operatorCode, companyName }
+  const [newPwValue, setNewPwValue]       = useState('');
+  const [pwChanging, setPwChanging]       = useState(false);
+  const [pwChangeError, setPwChangeError] = useState('');
+
+  // 教室パスワード変更モーダル
+  const [clsPwModal, setClsPwModal]   = useState(null); // { classroomCode, classroomName }
+  const [newClsPw, setNewClsPw]       = useState('');
+  const [clsPwChanging, setClsPwChanging] = useState(false);
+  const [clsPwError, setClsPwError]   = useState('');
+  const [showClsPasswords, setShowClsPasswords] = useState(false);
+
   // 新規事業者登録フォーム
   const [showAddOpForm, setShowAddOpForm]   = useState(false);
   const [newOpCode, setNewOpCode]           = useState('');
@@ -238,6 +251,42 @@ export default function AdminPage() {
     } finally {
       setAddOpLoading(false);
     }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    if (!newPwValue.trim()) { setPwChangeError('パスワードを入力してください。'); return; }
+    setPwChanging(true); setPwChangeError('');
+    try {
+      const res = await fetch('/api/update-operator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ operatorCode: pwChangeModal.operatorCode, adminPassword: newPwValue }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) { setPwChangeError(data.error || '変更に失敗しました。'); return; }
+      setPwChangeModal(null); setNewPwValue('');
+      await refresh();
+    } catch { setPwChangeError('通信エラーが発生しました。'); }
+    finally { setPwChanging(false); }
+  };
+
+  const handleClsPwChange = async (e) => {
+    e.preventDefault();
+    if (!newClsPw.trim()) { setClsPwError('パスワードを入力してください。'); return; }
+    setClsPwChanging(true); setClsPwError('');
+    try {
+      const res = await fetch('/api/update-classroom-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ classroomCode: clsPwModal.classroomCode, classroomPassword: newClsPw }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) { setClsPwError(data.error || '変更に失敗しました。'); return; }
+      setClsPwModal(null); setNewClsPw('');
+      await refresh();
+    } catch { setClsPwError('通信エラーが発生しました。'); }
+    finally { setClsPwChanging(false); }
   };
 
   const statusLabel = (s) => {
@@ -515,6 +564,7 @@ export default function AdminPage() {
                       <th className="px-4 py-3 text-left text-xs font-semibold text-green-900">登録日</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">ステータス</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">事業者管理URL</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">PW変更</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-green-50">
@@ -546,6 +596,13 @@ export default function AdminPage() {
                                 {copiedKey === `op-${op.operatorCode}` ? '✓ コピー済' : 'URLコピー'}
                               </button>
                             )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              onClick={() => { setPwChangeModal({ operatorCode: op.operatorCode, companyName: op.companyName }); setNewPwValue(''); setPwChangeError(''); }}
+                              className="text-xs px-2 py-1 rounded border border-amber-400 text-amber-700 hover:bg-amber-50 transition-colors whitespace-nowrap">
+                              🔑 変更
+                            </button>
                           </td>
                         </tr>
                       );
@@ -601,6 +658,16 @@ export default function AdminPage() {
                       <th className="px-4 py-3 text-left text-xs font-semibold text-green-900">登録日</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">ステータス</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">専用URL</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-green-900">
+                        <div className="flex items-center gap-1">
+                          <span>教室PW</span>
+                          <button onClick={() => setShowClsPasswords(v => !v)}
+                            className="text-xs px-1 py-0.5 rounded border border-green-400 text-green-700 hover:bg-green-100">
+                            {showClsPasswords ? '🙈' : '👁'}
+                          </button>
+                        </div>
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">PW変更</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-green-50">
@@ -628,6 +695,18 @@ export default function AdminPage() {
                                 {copiedKey === `cls-${cls.classroomCode}` ? '✓ コピー済' : 'URLコピー'}
                               </button>
                             )}
+                          </td>
+                          <td className="px-4 py-3 text-xs font-mono">
+                            {showClsPasswords
+                              ? <span className="bg-amber-50 border border-amber-200 text-amber-800 px-2 py-0.5 rounded font-bold select-all">{cls.classroomPassword || cls.classroomCode}</span>
+                              : <span className="text-gray-300 tracking-widest">••••••</span>}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              onClick={() => { setClsPwModal({ classroomCode: cls.classroomCode, classroomName: cls.classroomName }); setNewClsPw(''); setClsPwError(''); }}
+                              className="text-xs px-2 py-1 rounded border border-amber-400 text-amber-700 hover:bg-amber-50 transition-colors">
+                              🔑 変更
+                            </button>
                           </td>
                         </tr>
                       );
@@ -753,6 +832,68 @@ export default function AdminPage() {
           ※ 試作版です。本番では適切な認証・権限管理を実装してください。
         </p>
       </div>
+
+      {/* ===== 事業者パスワード変更モーダル ===== */}
+      {pwChangeModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+          onClick={() => setPwChangeModal(null)}>
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full"
+            onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-gray-900 mb-1">🔑 パスワード変更</h3>
+            <p className="text-sm text-gray-500 mb-4">{pwChangeModal.companyName}（{pwChangeModal.operatorCode}）</p>
+            <form onSubmit={handlePasswordChange} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">新しいパスワード</label>
+                <input value={newPwValue} onChange={e => setNewPwValue(e.target.value)}
+                  type="text" placeholder="新しいパスワードを入力" required autoFocus
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:border-amber-400" />
+              </div>
+              {pwChangeError && <p className="text-xs text-red-600">{pwChangeError}</p>}
+              <div className="flex gap-2 pt-1">
+                <button type="submit" disabled={pwChanging}
+                  className="flex-1 bg-amber-600 hover:bg-amber-500 disabled:bg-gray-400 text-white text-sm font-semibold py-2 rounded-lg transition-colors">
+                  {pwChanging ? '変更中...' : '変更する'}
+                </button>
+                <button type="button" onClick={() => setPwChangeModal(null)}
+                  className="flex-1 border border-gray-300 text-gray-600 text-sm py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                  キャンセル
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===== 教室パスワード変更モーダル ===== */}
+      {clsPwModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+          onClick={() => setClsPwModal(null)}>
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full"
+            onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-gray-900 mb-1">🔑 教室パスワード変更</h3>
+            <p className="text-sm text-gray-500 mb-4">{clsPwModal.classroomName}（{clsPwModal.classroomCode}）</p>
+            <form onSubmit={handleClsPwChange} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">新しいパスワード</label>
+                <input value={newClsPw} onChange={e => setNewClsPw(e.target.value)}
+                  type="text" placeholder="新しいパスワードを入力" required autoFocus
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:border-amber-400" />
+              </div>
+              {clsPwError && <p className="text-xs text-red-600">{clsPwError}</p>}
+              <div className="flex gap-2 pt-1">
+                <button type="submit" disabled={clsPwChanging}
+                  className="flex-1 bg-amber-600 hover:bg-amber-500 disabled:bg-gray-400 text-white text-sm font-semibold py-2 rounded-lg transition-colors">
+                  {clsPwChanging ? '変更中...' : '変更する'}
+                </button>
+                <button type="button" onClick={() => setClsPwModal(null)}
+                  className="flex-1 border border-gray-300 text-gray-600 text-sm py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                  キャンセル
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ===== ステータス変更モーダル ===== */}
       {statusModal && (

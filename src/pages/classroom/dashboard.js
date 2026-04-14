@@ -49,7 +49,7 @@ export default function ClassroomDashboard() {
   // ── 認証チェック ──────────────────────────────────────────────
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem('classroomAuth');
+      const raw = sessionStorage.getItem('classroomAuth') || localStorage.getItem('classroomAuth');
       if (!raw) { router.replace('/classroom/login'); return; }
       const parsed = JSON.parse(raw);
       if (!parsed?.operatorCode || !parsed?.classroomCode) {
@@ -174,6 +174,41 @@ export default function ClassroomDashboard() {
     return raw.replace('T', ' ').slice(0, 16);
   };
 
+  // ── CSV出力ヘルパー ───────────────────────────────────────────
+  const downloadCsv = (filename, rows) => {
+    const BOM = '\uFEFF';
+    const csv = BOM + rows.map(r => r.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportCsv = (filterMode) => {
+    // filterMode: 'all' | 'passed' | 'failed'
+    let filtered = records;
+    let label = '全件';
+    if (filterMode === 'passed') { filtered = records.filter(r => r.passed); label = '合格'; }
+    if (filterMode === 'failed') { filtered = records.filter(r => !r.passed); label = '不合格'; }
+
+    const auth = JSON.parse(sessionStorage.getItem('classroomAuth') || localStorage.getItem('classroomAuth') || '{}');
+    const filename = `受講記録_${auth.classroomName || ''}_${label}_${new Date().toISOString().slice(0,10)}.csv`;
+
+    const header = ['受講日時', '氏名', '研修種別', '得点', '合否', '修了日', '有効期限', '修了番号'];
+    const rows = [header, ...filtered.map(r => [
+      r.submittedAt ? new Date(r.submittedAt).toLocaleString('ja-JP') : '',
+      r.fullName || '',
+      r.track === 'manager' ? '情報管理責任者研修' : '一般研修',
+      r.score ?? '',
+      r.passed ? '合格' : '不合格',
+      r.completionDate || '',
+      calcExpiry(r.completionDate) || '',
+      r.certNumber || '',
+    ])];
+    downloadCsv(filename, rows);
+  };
+
   // ── 認証待ち or ローディング ───────────────────────────────────
   if (!auth || loading) {
     return (
@@ -269,6 +304,23 @@ export default function ClassroomDashboard() {
           ════════════════════════════════════════ */}
       {activeTab === 'records' && (
         <div>
+          {/* CSV出力 */}
+          <div className="flex flex-wrap gap-2 mb-3">
+            <span className="text-xs text-gray-500 self-center">CSV出力：</span>
+            <button onClick={() => exportCsv('all')}
+              className="text-xs px-3 py-1.5 rounded-lg border border-green-600 text-green-700 hover:bg-green-50 font-medium transition-colors">
+              📥 全件
+            </button>
+            <button onClick={() => exportCsv('passed')}
+              className="text-xs px-3 py-1.5 rounded-lg border border-blue-500 text-blue-700 hover:bg-blue-50 font-medium transition-colors">
+              📥 合格のみ
+            </button>
+            <button onClick={() => exportCsv('failed')}
+              className="text-xs px-3 py-1.5 rounded-lg border border-red-400 text-red-600 hover:bg-red-50 font-medium transition-colors">
+              📥 不合格のみ
+            </button>
+          </div>
+
           {/* サマリーカード */}
           <div className="grid grid-cols-3 gap-3 mb-6">
             {[

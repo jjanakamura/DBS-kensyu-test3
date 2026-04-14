@@ -32,12 +32,14 @@ export default function ClassroomLogin() {
       });
       const data = await res.json();
       if (data.success) {
-        sessionStorage.setItem('classroomAuth', JSON.stringify({
+        const authData = JSON.stringify({
           operatorCode: data.operatorCode,
           classroomCode: data.classroomCode,
           companyName: data.companyName,
           classroomName: data.classroomName,
-        }));
+        });
+        sessionStorage.setItem('classroomAuth', authData);
+        localStorage.setItem('classroomAuth', authData);
         router.push('/classroom/dashboard');
       } else {
         setError(data.message || 'ログインに失敗しました。');
