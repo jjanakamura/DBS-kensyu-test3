@@ -3,8 +3,8 @@ import Layout from '../components/Layout';
 
 /**
  * JJA 協会本部 管理画面
- * - 全事業者・全教室・全受講記録を横断閲覧
- * - タブ①受講記録 ②事業者一覧 ③教室一覧 ④会員マスタ（旧）
+ * - 全事業者・全教室・全受講記録・受講者管理を横断閲覧
+ * - タブ①受講記録 ②事業者一覧 ③教室一覧 ④受講者管理
  */
 
 const ADMIN_PASSWORD = 'admin2024';
@@ -22,6 +22,7 @@ export default function AdminPage() {
   const [records, setRecords] = useState([]);
   const [operators, setOperators] = useState([]);
   const [classrooms, setClassrooms] = useState([]);
+  const [trainees, setTrainees] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // 受講記録フィルタ
@@ -38,6 +39,17 @@ export default function AdminPage() {
   const [clsSearch, setClsSearch] = useState('');
   const [clsOpFilter, setClsOpFilter] = useState('');
 
+  // 受講者管理フィルタ
+  const [traineeSearch, setTraineeSearch] = useState('');
+  const [showRetired, setShowRetired] = useState(false);
+  const [traineeOpFilter, setTraineeOpFilter] = useState('');
+
+  // ステータス変更モーダル
+  const [statusModal, setStatusModal] = useState(null); // { id, fullName, currentStatus, notes }
+  const [modalStatus, setModalStatus] = useState('active');
+  const [modalNotes, setModalNotes] = useState('');
+  const [statusUpdating, setStatusUpdating] = useState(false);
+
   // URLコピー
   const [copiedKey, setCopiedKey] = useState('');
 
@@ -47,17 +59,16 @@ export default function AdminPage() {
     setAuthed(true);
     setLoading(true);
     try {
-      const [recRes, opRes, clsRes] = await Promise.all([
+      const [recRes, opRes, clsRes, trnRes] = await Promise.all([
         fetch('/api/get-records'),
         fetch('/api/get-operators'),
         fetch('/api/get-classrooms'),
+        fetch('/api/get-trainees?includeRetired=true'),
       ]);
-      const recData = await recRes.json();
-      const opData = await opRes.json();
-      const clsData = await clsRes.json();
-      setRecords(recData.records || []);
-      setOperators(opData.operators || []);
-      setClassrooms(clsData.classrooms || []);
+      setRecords((await recRes.json()).records || []);
+      setOperators((await opRes.json()).operators || []);
+      setClassrooms((await clsRes.json()).classrooms || []);
+      setTrainees((await trnRes.json()).trainees || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -65,14 +76,16 @@ export default function AdminPage() {
   const refresh = async () => {
     setLoading(true);
     try {
-      const [recRes, opRes, clsRes] = await Promise.all([
+      const [recRes, opRes, clsRes, trnRes] = await Promise.all([
         fetch('/api/get-records'),
         fetch('/api/get-operators'),
         fetch('/api/get-classrooms'),
+        fetch('/api/get-trainees?includeRetired=true'),
       ]);
       setRecords((await recRes.json()).records || []);
       setOperators((await opRes.json()).operators || []);
       setClassrooms((await clsRes.json()).classrooms || []);
+      setTrainees((await trnRes.json()).trainees || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -94,8 +107,7 @@ export default function AdminPage() {
         (r.fullName || '').includes(searchText) ||
         (r.companyName || '').includes(searchText) ||
         (r.classroomName || '').includes(searchText) ||
-        (r.operatorCode || r.memberCode || '').toLowerCase().includes(t) ||
-        (r.email || '').toLowerCase().includes(t)
+        (r.operatorCode || r.memberCode || '').toLowerCase().includes(t)
       );
     })
     .sort((a, b) => {
@@ -134,6 +146,63 @@ export default function AdminPage() {
         (c.operatorCode || '').toLowerCase().includes(t);
     });
 
+  // ===== 受講者フィルタ =====
+  const filteredTrainees = trainees
+    .filter((t) => showRetired ? true : t.status !== 'retired')
+    .filter((t) => !traineeOpFilter || t.operatorCode === traineeOpFilter)
+    .filter((t) => {
+      if (!traineeSearch) return true;
+      const s = traineeSearch.toLowerCase();
+      return (
+        (t.fullName || '').includes(traineeSearch) ||
+        (t.operatorCode || '').toLowerCase().includes(s) ||
+        (t.companyName || '').includes(traineeSearch) ||
+        (t.classroomName || '').includes(traineeSearch)
+      );
+    });
+
+  const activeTrainees = trainees.filter((t) => t.status === 'active').length;
+  const retiredTrainees = trainees.filter((t) => t.status === 'retired').length;
+  const suspendedTrainees = trainees.filter((t) => t.status === 'suspended').length;
+
+  // ===== ステータス変更モーダル =====
+  const openStatusModal = (trainee) => {
+    setStatusModal({ id: trainee.id, fullName: trainee.fullName, currentStatus: trainee.status });
+    setModalStatus(trainee.status);
+    setModalNotes(trainee.notes || '');
+  };
+
+  const handleStatusUpdate = async () => {
+    if (!statusModal) return;
+    setStatusUpdating(true);
+    try {
+      const res = await fetch('/api/update-trainee-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: statusModal.id, status: modalStatus, notes: modalNotes }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTrainees((prev) => prev.map((t) => t.id === statusModal.id ? data.trainee : t));
+        setStatusModal(null);
+      }
+    } catch (e) { console.error(e); }
+    finally { setStatusUpdating(false); }
+  };
+
+  const statusLabel = (s) => {
+    if (s === 'active') return '在籍中';
+    if (s === 'retired') return '退職済';
+    if (s === 'suspended') return '停止中';
+    return s;
+  };
+  const statusBadge = (s) => {
+    if (s === 'active') return 'bg-green-100 text-green-800';
+    if (s === 'retired') return 'bg-gray-200 text-gray-600';
+    if (s === 'suspended') return 'bg-orange-100 text-orange-700';
+    return 'bg-gray-100 text-gray-500';
+  };
+
   // ========== ログイン前 ==========
   if (!authed) {
     return (
@@ -165,6 +234,7 @@ export default function AdminPage() {
     { key: 'records', label: '受講記録', count: records.length },
     { key: 'operators', label: '事業者一覧', count: operators.length },
     { key: 'classrooms', label: '教室一覧', count: classrooms.length },
+    { key: 'trainees', label: '受講者管理', count: trainees.length },
   ];
 
   return (
@@ -252,7 +322,7 @@ export default function AdminPage() {
                           { field: 'classroomCode', label: '教室コード' },
                           { field: 'classroomName', label: '教室名' },
                           { field: 'fullName', label: '氏名' },
-                          { field: 'email', label: 'メール' },
+                          { field: 'track', label: '研修種別' },
                           { field: 'score', label: '得点' },
                           { field: 'passed', label: '合否' },
                           { field: 'completionDate', label: '修了日' },
@@ -275,7 +345,12 @@ export default function AdminPage() {
                           <td className="px-4 py-3 font-mono text-xs text-gray-600">{r.classroomCode || '—'}</td>
                           <td className="px-4 py-3 text-xs text-gray-800 whitespace-nowrap">{r.classroomName || '—'}</td>
                           <td className="px-4 py-3 text-xs font-medium text-gray-900 whitespace-nowrap">{r.fullName || '—'}</td>
-                          <td className="px-4 py-3 text-xs text-gray-600">{r.email || '—'}</td>
+                          <td className="px-4 py-3 text-center">
+                            {r.track === 'manager'
+                              ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">情報管理</span>
+                              : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">一般</span>
+                            }
+                          </td>
                           <td className="px-4 py-3 text-xs text-center font-semibold">{r.score != null ? `${r.score}%` : '—'}</td>
                           <td className="px-4 py-3 text-center">
                             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${r.passed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'}`}>
@@ -450,10 +525,174 @@ export default function AdminPage() {
           </>
         )}
 
+        {/* ===== タブ④：受講者管理 ===== */}
+        {activeTab === 'trainees' && (
+          <>
+            {/* サマリー */}
+            <div className="grid grid-cols-3 gap-4 mb-5">
+              <div className="bg-white rounded-lg border border-green-200 p-4 text-center">
+                <p className="text-xs text-gray-500 mb-1">在籍中</p>
+                <p className="text-2xl font-bold text-green-700">{activeTrainees}</p>
+              </div>
+              <div className="bg-white rounded-lg border border-orange-200 p-4 text-center">
+                <p className="text-xs text-orange-500 mb-1">停止中</p>
+                <p className="text-2xl font-bold text-orange-600">{suspendedTrainees}</p>
+              </div>
+              <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
+                <p className="text-xs text-gray-500 mb-1">退職済</p>
+                <p className="text-2xl font-bold text-gray-500">{retiredTrainees}</p>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 text-xs text-blue-800">
+              <p className="font-semibold mb-0.5">ℹ️ 受講者管理について</p>
+              <p>退職・停止はステータス変更のみ（論理削除）です。受講記録・修了履歴は雇用状態に関わらず保持されます。</p>
+            </div>
+
+            {/* フィルタ */}
+            <div className="flex flex-wrap gap-3 mb-4">
+              <input type="text" value={traineeSearch} onChange={(e) => setTraineeSearch(e.target.value)}
+                placeholder="氏名・事業者コード・事業者名・教室名で検索..."
+                className="flex-1 min-w-48 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <select value={traineeOpFilter} onChange={(e) => setTraineeOpFilter(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                <option value="">全事業者</option>
+                {operators.filter(o => o.status === 'active').map((o) => (
+                  <option key={o.operatorCode} value={o.operatorCode}>{o.operatorCode}：{o.companyName}</option>
+                ))}
+              </select>
+              <label className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 select-none">
+                <input type="checkbox" checked={showRetired} onChange={(e) => setShowRetired(e.target.checked)}
+                  className="w-4 h-4 accent-gray-600" />
+                退職者を含む
+              </label>
+            </div>
+
+            {filteredTrainees.length === 0 ? (
+              <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-xl border border-green-200">
+                {trainees.length === 0 ? '受講者データがありません。' : '条件に一致する受講者がいません。'}
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl shadow-sm border border-green-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-green-50 border-b border-green-200">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">氏名</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">事業者コード</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">事業者名</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">教室名</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">研修種別</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">ステータス</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">登録日</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">退職日</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">メモ</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-green-50">
+                      {filteredTrainees.map((t, idx) => (
+                        <tr key={idx} className={`transition-colors ${t.status === 'retired' ? 'opacity-60 bg-gray-50' : 'hover:bg-green-50'}`}>
+                          <td className="px-4 py-3 text-xs font-medium text-gray-900 whitespace-nowrap">{t.fullName || '—'}</td>
+                          <td className="px-4 py-3 font-mono text-xs text-gray-700">{t.operatorCode || '—'}</td>
+                          <td className="px-4 py-3 text-xs text-gray-800 whitespace-nowrap">{t.companyName || '—'}</td>
+                          <td className="px-4 py-3 text-xs text-gray-700 whitespace-nowrap">{t.classroomName || '—'}</td>
+                          <td className="px-4 py-3 text-center">
+                            {t.track === 'manager'
+                              ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">情報管理</span>
+                              : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">一般</span>
+                            }
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${statusBadge(t.status)}`}>
+                              {statusLabel(t.status)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{t.registeredAt || '—'}</td>
+                          <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
+                            {t.retiredAt ? new Date(t.retiredAt).toLocaleDateString('ja-JP') : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-500 max-w-32 truncate" title={t.notes}>{t.notes || '—'}</td>
+                          <td className="px-4 py-3 text-center">
+                            <button onClick={() => openStatusModal(t)}
+                              className="text-xs px-2.5 py-1 bg-white border border-green-400 text-green-700 hover:bg-green-50 rounded transition-colors whitespace-nowrap">
+                              ステータス変更
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="px-4 py-2 border-t border-green-100 bg-green-50 text-xs text-gray-400 text-right">
+                  {filteredTrainees.length} 件表示（全 {trainees.length} 件）
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
         <p className="mt-6 text-xs text-gray-400 text-center">
           ※ 試作版です。本番では適切な認証・権限管理を実装してください。
         </p>
       </div>
+
+      {/* ===== ステータス変更モーダル ===== */}
+      {statusModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl border border-green-200 w-full max-w-md">
+            <div className="px-6 py-4 border-b border-green-100">
+              <h2 className="text-base font-bold text-gray-900">ステータス変更</h2>
+              <p className="text-sm text-gray-500 mt-0.5">{statusModal.fullName}</p>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">新しいステータス</label>
+                <div className="flex gap-2">
+                  {[
+                    { val: 'active', label: '在籍中', color: 'green' },
+                    { val: 'suspended', label: '停止中', color: 'orange' },
+                    { val: 'retired', label: '退職済', color: 'gray' },
+                  ].map((s) => (
+                    <button key={s.val} onClick={() => setModalStatus(s.val)}
+                      className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-colors ${
+                        modalStatus === s.val
+                          ? s.color === 'green' ? 'bg-green-700 text-white border-green-700'
+                            : s.color === 'orange' ? 'bg-orange-500 text-white border-orange-500'
+                            : 'bg-gray-500 text-white border-gray-500'
+                          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                      }`}>
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">メモ（任意）</label>
+                <textarea value={modalNotes} onChange={(e) => setModalNotes(e.target.value)}
+                  placeholder="退職理由・備考など"
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
+              </div>
+              {modalStatus === 'retired' && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+                  退職済に変更しても受講記録・修了証は保持されます。元に戻す場合は「在籍中」を選択してください。
+                </div>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-green-100 flex justify-end gap-3">
+              <button onClick={() => setStatusModal(null)}
+                className="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                キャンセル
+              </button>
+              <button onClick={handleStatusUpdate} disabled={statusUpdating}
+                className="px-4 py-2 text-sm font-semibold text-white bg-green-800 hover:bg-green-700 disabled:opacity-50 rounded-lg transition-colors">
+                {statusUpdating ? '更新中...' : '変更を保存'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

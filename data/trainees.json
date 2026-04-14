@@ -1,0 +1,17 @@
+[
+  {
+    "id": "TRN-1776010317066-0001",
+    "operatorCode": "A001",
+    "companyName": "株式会社中村",
+    "classroomCode": "",
+    "classroomName": "渋谷校",
+    "fullName": "山田 太郎",
+    "track": "general",
+    "status": "active",
+    "retiredAt": null,
+    "statusUpdatedAt": null,
+    "notes": "",
+    "registeredAt": "2026-04-12",
+    "latestRecordId": "REC-1776017098838-0002"
+  }
+]

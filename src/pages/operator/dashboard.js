@@ -11,8 +11,19 @@ export default function OperatorDashboard() {
   const [auth, setAuth] = useState(null);
   const [classrooms, setClassrooms] = useState([]);
   const [records, setRecords] = useState([]);
+  const [trainees, setTrainees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('classrooms');
+
+  // 受講者管理フィルタ
+  const [traineeSearch, setTraineeSearch] = useState('');
+  const [showRetired, setShowRetired] = useState(false);
+
+  // ステータス変更モーダル
+  const [statusModal, setStatusModal] = useState(null);
+  const [modalStatus, setModalStatus] = useState('active');
+  const [modalNotes, setModalNotes] = useState('');
+  const [statusUpdating, setStatusUpdating] = useState(false);
 
   useEffect(() => {
     const stored = sessionStorage.getItem('operatorAuth');
@@ -25,14 +36,17 @@ export default function OperatorDashboard() {
   const fetchData = async (operatorCode) => {
     setLoading(true);
     try {
-      const [clsRes, recRes] = await Promise.all([
+      const [clsRes, recRes, trnRes] = await Promise.all([
         fetch(`/api/get-classrooms?operatorCode=${operatorCode}`),
         fetch(`/api/get-operator-records?operatorCode=${operatorCode}`),
+        fetch(`/api/get-trainees?operatorCode=${operatorCode}&includeRetired=true`),
       ]);
       const clsData = await clsRes.json();
       const recData = await recRes.json();
+      const trnData = await trnRes.json();
       setClassrooms(clsData.classrooms || []);
       setRecords(recData.records || []);
+      setTrainees(trnData.trainees || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -50,6 +64,56 @@ export default function OperatorDashboard() {
   const handleLogout = () => {
     sessionStorage.removeItem('operatorAuth');
     router.push('/operator/login');
+  };
+
+  // 受講者フィルタ
+  const filteredTrainees = trainees
+    .filter((t) => showRetired ? true : t.status !== 'retired')
+    .filter((t) => {
+      if (!traineeSearch) return true;
+      const s = traineeSearch.toLowerCase();
+      return (
+        (t.fullName || '').includes(traineeSearch) ||
+        (t.classroomName || '').includes(traineeSearch) ||
+        (t.operatorCode || '').toLowerCase().includes(s)
+      );
+    });
+
+  const openStatusModal = (trainee) => {
+    setStatusModal({ id: trainee.id, fullName: trainee.fullName, currentStatus: trainee.status });
+    setModalStatus(trainee.status);
+    setModalNotes(trainee.notes || '');
+  };
+
+  const handleStatusUpdate = async () => {
+    if (!statusModal) return;
+    setStatusUpdating(true);
+    try {
+      const res = await fetch('/api/update-trainee-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: statusModal.id, status: modalStatus, notes: modalNotes }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTrainees((prev) => prev.map((t) => t.id === statusModal.id ? data.trainee : t));
+        setStatusModal(null);
+      }
+    } catch (e) { console.error(e); }
+    finally { setStatusUpdating(false); }
+  };
+
+  const statusLabel = (s) => {
+    if (s === 'active') return '在籍中';
+    if (s === 'retired') return '退職済';
+    if (s === 'suspended') return '停止中';
+    return s;
+  };
+  const statusBadge = (s) => {
+    if (s === 'active') return 'bg-green-100 text-green-800';
+    if (s === 'retired') return 'bg-gray-200 text-gray-600';
+    if (s === 'suspended') return 'bg-orange-100 text-orange-700';
+    return 'bg-gray-100 text-gray-500';
   };
 
   if (!auth) return null;
@@ -126,6 +190,7 @@ export default function OperatorDashboard() {
           {[
             { key: 'classrooms', label: '教室一覧・URL発行' },
             { key: 'records', label: '受講記録' },
+            { key: 'trainees', label: '受講者管理' },
             { key: 'certificates', label: '修了証再発行' },
           ].map((tab) => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
@@ -250,11 +315,148 @@ export default function OperatorDashboard() {
           </>
         )}
 
+        {/* 受講者管理 */}
+        {!loading && activeTab === 'trainees' && (
+          <>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 text-xs text-blue-800">
+              <p className="font-semibold mb-0.5">ℹ️ 受講者管理について</p>
+              <p>退職・停止はステータス変更のみです。受講記録・修了証は保持されます。</p>
+            </div>
+
+            {/* フィルタ */}
+            <div className="flex flex-wrap gap-3 mb-4">
+              <input type="text" value={traineeSearch} onChange={(e) => setTraineeSearch(e.target.value)}
+                placeholder="氏名・教室名で検索..."
+                className="flex-1 min-w-48 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <label className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 select-none">
+                <input type="checkbox" checked={showRetired} onChange={(e) => setShowRetired(e.target.checked)}
+                  className="w-4 h-4 accent-gray-600" />
+                退職者を含む
+              </label>
+            </div>
+
+            {filteredTrainees.length === 0 ? (
+              <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-xl border border-green-200">
+                {trainees.length === 0 ? '受講者データがありません。' : '条件に一致する受講者がいません。'}
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl shadow-sm border border-green-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-green-50 border-b border-green-200">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">氏名</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">教室名</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">研修種別</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">ステータス</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">登録日</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">退職日</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">メモ</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-green-50">
+                      {filteredTrainees.map((t, idx) => (
+                        <tr key={idx} className={`transition-colors ${t.status === 'retired' ? 'opacity-60 bg-gray-50' : 'hover:bg-green-50'}`}>
+                          <td className="px-4 py-3 text-xs font-medium text-gray-900 whitespace-nowrap">{t.fullName || '—'}</td>
+                          <td className="px-4 py-3 text-xs text-gray-700 whitespace-nowrap">{t.classroomName || '—'}</td>
+                          <td className="px-4 py-3 text-center">
+                            {t.track === 'manager'
+                              ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">情報管理</span>
+                              : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">一般</span>
+                            }
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${statusBadge(t.status)}`}>
+                              {statusLabel(t.status)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{t.registeredAt || '—'}</td>
+                          <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
+                            {t.retiredAt ? new Date(t.retiredAt).toLocaleDateString('ja-JP') : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-500 max-w-28 truncate" title={t.notes}>{t.notes || '—'}</td>
+                          <td className="px-4 py-3 text-center">
+                            <button onClick={() => openStatusModal(t)}
+                              className="text-xs px-2.5 py-1 bg-white border border-green-400 text-green-700 hover:bg-green-50 rounded transition-colors whitespace-nowrap">
+                              ステータス変更
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="px-4 py-2 border-t border-green-100 bg-green-50 text-xs text-gray-400 text-right">
+                  {filteredTrainees.length} 件表示（全 {trainees.length} 件）
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
         {/* 修了証再発行 */}
         {!loading && activeTab === 'certificates' && (
           <CertificatesTab records={records.filter((r) => r.passed)} />
         )}
       </div>
+
+      {/* ===== ステータス変更モーダル ===== */}
+      {statusModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl shadow-xl border border-green-200 w-full max-w-md">
+          <div className="px-6 py-4 border-b border-green-100">
+            <h2 className="text-base font-bold text-gray-900">ステータス変更</h2>
+            <p className="text-sm text-gray-500 mt-0.5">{statusModal.fullName}</p>
+          </div>
+          <div className="px-6 py-5 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">新しいステータス</label>
+              <div className="flex gap-2">
+                {[
+                  { val: 'active', label: '在籍中', color: 'green' },
+                  { val: 'suspended', label: '停止中', color: 'orange' },
+                  { val: 'retired', label: '退職済', color: 'gray' },
+                ].map((s) => (
+                  <button key={s.val} onClick={() => setModalStatus(s.val)}
+                    className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-colors ${
+                      modalStatus === s.val
+                        ? s.color === 'green' ? 'bg-green-700 text-white border-green-700'
+                          : s.color === 'orange' ? 'bg-orange-500 text-white border-orange-500'
+                          : 'bg-gray-500 text-white border-gray-500'
+                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                    }`}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">メモ（任意）</label>
+              <textarea value={modalNotes} onChange={(e) => setModalNotes(e.target.value)}
+                placeholder="退職理由・備考など"
+                rows={3}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
+            </div>
+            {modalStatus === 'retired' && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+                退職済に変更しても受講記録・修了証は保持されます。
+              </div>
+            )}
+          </div>
+          <div className="px-6 py-4 border-t border-green-100 flex justify-end gap-3">
+            <button onClick={() => setStatusModal(null)}
+              className="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+              キャンセル
+            </button>
+            <button onClick={handleStatusUpdate} disabled={statusUpdating}
+              className="px-4 py-2 text-sm font-semibold text-white bg-green-800 hover:bg-green-700 disabled:opacity-50 rounded-lg transition-colors">
+              {statusUpdating ? '更新中...' : '変更を保存'}
+            </button>
+          </div>
+        </div>
+      </div>
+      )}
     </Layout>
   );
 }
