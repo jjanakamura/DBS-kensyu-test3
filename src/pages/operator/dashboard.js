@@ -25,6 +25,13 @@ export default function OperatorDashboard() {
   // 教室複数選択
   const [selectedClassrooms, setSelectedClassrooms] = useState(new Set());
 
+  // 教室パスワード表示・変更
+  const [showClsPw, setShowClsPw]     = useState(false);
+  const [clsPwModal, setClsPwModal]   = useState(null); // { classroomCode, classroomName }
+  const [newClsPw, setNewClsPw]       = useState('');
+  const [clsPwChanging, setClsPwChanging] = useState(false);
+  const [clsPwError, setClsPwError]   = useState('');
+
   // ステータス変更モーダル
   const [statusModal, setStatusModal] = useState(null);
   const [modalStatus, setModalStatus] = useState('active');
@@ -70,6 +77,28 @@ export default function OperatorDashboard() {
   const handleLogout = () => {
     sessionStorage.removeItem('operatorAuth');
     router.push('/operator/login');
+  };
+
+  // 教室パスワード変更
+  const handleClsPwChange = async (e) => {
+    e.preventDefault();
+    if (!newClsPw.trim()) { setClsPwError('パスワードを入力してください。'); return; }
+    setClsPwChanging(true); setClsPwError('');
+    try {
+      const res = await fetch('/api/update-classroom-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ classroomCode: clsPwModal.classroomCode, classroomPassword: newClsPw }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) { setClsPwError(data.error || '変更に失敗しました。'); return; }
+      setClsPwModal(null); setNewClsPw('');
+      // ローカルのclassrooms stateを即時更新
+      setClassrooms(prev => prev.map(c =>
+        c.classroomCode === clsPwModal.classroomCode ? { ...c, classroomPassword: newClsPw } : c
+      ));
+    } catch { setClsPwError('通信エラーが発生しました。'); }
+    finally { setClsPwChanging(false); }
   };
 
   // 受講者フィルタ
@@ -292,8 +321,8 @@ export default function OperatorDashboard() {
         {!loading && activeTab === 'classrooms' && (
           <>
             <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 text-xs text-blue-800">
-              <p className="font-semibold mb-1">📎 専用URLの発行方法</p>
-              <p>「URLコピー」ボタンで各教室専用の受講URLをコピーできます。各教室の責任者にメールで送付してください。</p>
+              <p className="font-semibold mb-1">📋 教室管理について</p>
+              <p>「📋 教室管理へ」で各教室の受講記録・受講者管理・QRコード発行が行えます。教室のログインIDとパスワードもここで確認・変更できます。</p>
             </div>
             {/* 選択アクションバー */}
             {selectedClassrooms.size > 0 && (
@@ -344,7 +373,16 @@ export default function OperatorDashboard() {
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">受講者数</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">合格者数</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">ステータス</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">専用URL</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-green-900">
+                        <div className="flex items-center gap-1">
+                          <span>教室PW</span>
+                          <button onClick={() => setShowClsPw(v => !v)}
+                            className="text-xs px-1 py-0.5 rounded border border-green-400 text-green-700 hover:bg-green-100 transition-colors">
+                            {showClsPw ? '🙈' : '👁'}
+                          </button>
+                        </div>
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">PW変更</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">教室管理</th>
                     </tr>
                   </thead>
@@ -376,8 +414,17 @@ export default function OperatorDashboard() {
                               {cls.status === 'active' ? '有効' : '停止'}
                             </span>
                           </td>
+                          <td className="px-4 py-3 text-xs font-mono" onClick={(e) => e.stopPropagation()}>
+                            {showClsPw
+                              ? <span className="bg-amber-50 border border-amber-200 text-amber-800 px-2 py-0.5 rounded font-bold select-all">{cls.classroomPassword || cls.classroomCode}</span>
+                              : <span className="text-gray-300 tracking-widest">••••••</span>}
+                          </td>
                           <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
-                            <UrlCopyButton onClick={() => copyUrl(cls.classroomCode, auth.operatorCode)} />
+                            <button
+                              onClick={() => { setClsPwModal({ classroomCode: cls.classroomCode, classroomName: cls.classroomName }); setNewClsPw(''); setClsPwError(''); }}
+                              className="text-xs px-2 py-1 rounded border border-amber-400 text-amber-700 hover:bg-amber-50 transition-colors">
+                              🔑 変更
+                            </button>
                           </td>
                           <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                             {cls.status === 'active' && (
@@ -677,6 +724,39 @@ export default function OperatorDashboard() {
           </div>
         </div>
       </div>
+      )}
+
+      {/* ===== 教室パスワード変更モーダル ===== */}
+      {clsPwModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+          onClick={() => setClsPwModal(null)}>
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full"
+            onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-gray-900 mb-1">🔑 教室パスワード変更</h3>
+            <p className="text-sm text-gray-500 mb-1">{clsPwModal.classroomName}</p>
+            <p className="text-xs font-mono text-gray-400 mb-4">({clsPwModal.classroomCode})</p>
+            <form onSubmit={handleClsPwChange} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">新しいパスワード</label>
+                <input value={newClsPw} onChange={e => setNewClsPw(e.target.value)}
+                  type="text" placeholder="新しいパスワードを入力" required autoFocus
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:border-amber-400" />
+                <p className="text-xs text-gray-400 mt-1">変更後は教室長へ新しいパスワードをお伝えください。</p>
+              </div>
+              {clsPwError && <p className="text-xs text-red-600">{clsPwError}</p>}
+              <div className="flex gap-2 pt-1">
+                <button type="submit" disabled={clsPwChanging}
+                  className="flex-1 bg-amber-600 hover:bg-amber-500 disabled:bg-gray-400 text-white text-sm font-semibold py-2 rounded-lg transition-colors">
+                  {clsPwChanging ? '変更中...' : '変更する'}
+                </button>
+                <button type="button" onClick={() => setClsPwModal(null)}
+                  className="flex-1 border border-gray-300 text-gray-600 text-sm py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                  キャンセル
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
     </Layout>
