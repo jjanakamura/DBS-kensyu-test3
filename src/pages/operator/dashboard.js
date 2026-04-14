@@ -22,6 +22,9 @@ export default function OperatorDashboard() {
   // CSV出力
   const [csvClassroom, setCsvClassroom] = useState('');
 
+  // 教室複数選択
+  const [selectedClassrooms, setSelectedClassrooms] = useState(new Set());
+
   // ステータス変更モーダル
   const [statusModal, setStatusModal] = useState(null);
   const [modalStatus, setModalStatus] = useState('active');
@@ -119,6 +122,27 @@ export default function OperatorDashboard() {
     return 'bg-gray-100 text-gray-500';
   };
 
+  // 教室チェックボックス操作
+  const toggleClassroom = (code) => {
+    setSelectedClassrooms((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  };
+  const allClsChecked = classrooms.length > 0 && selectedClassrooms.size === classrooms.length;
+  const someClsChecked = selectedClassrooms.size > 0 && !allClsChecked;
+  const toggleAllClassrooms = () => {
+    if (allClsChecked) setSelectedClassrooms(new Set());
+    else setSelectedClassrooms(new Set(classrooms.map((c) => c.classroomCode)));
+  };
+
+  // 受講記録：選択教室でフィルタ
+  const displayedRecords = selectedClassrooms.size > 0
+    ? records.filter((r) => selectedClassrooms.has(r.classroomCode))
+    : records;
+
   // CSV出力ユーティリティ
   const downloadCsv = (filename, rows) => {
     const BOM = '\uFEFF';
@@ -134,11 +158,21 @@ export default function OperatorDashboard() {
     URL.revokeObjectURL(url);
   };
 
-  const exportRecordsCsv = (classroomFilter) => {
+  const exportRecordsCsv = (filter) => {
+    // filter: '' = 全体 / string = 単一教室コード / Set = 複数教室
     const statusMap = { active: '在籍中', retired: '退職済', suspended: '停止中' };
-    const filtered = classroomFilter
-      ? records.filter((r) => r.classroomCode === classroomFilter)
-      : records;
+    let filtered;
+    let label;
+    if (!filter || (filter instanceof Set && filter.size === 0)) {
+      filtered = records;
+      label = '全体';
+    } else if (filter instanceof Set) {
+      filtered = records.filter((r) => filter.has(r.classroomCode));
+      label = `選択${filter.size}教室`;
+    } else {
+      filtered = records.filter((r) => r.classroomCode === filter);
+      label = filter;
+    }
     const header = [
       '受講日時', '教室コード', '教室名', '氏名',
       '研修種別', '得点', '合否', '修了日', '修了番号', '在籍ステータス',
@@ -161,7 +195,6 @@ export default function OperatorDashboard() {
       ];
     });
     const date = new Date().toISOString().slice(0, 10);
-    const label = classroomFilter || '全体';
     downloadCsv(`受講記録_${auth.operatorCode}_${label}_${date}.csv`, [header, ...rows]);
   };
 
@@ -262,6 +295,30 @@ export default function OperatorDashboard() {
               <p className="font-semibold mb-1">📎 専用URLの発行方法</p>
               <p>「URLコピー」ボタンで各教室専用の受講URLをコピーできます。各教室の責任者にメールで送付してください。</p>
             </div>
+            {/* 選択アクションバー */}
+            {selectedClassrooms.size > 0 && (
+              <div className="flex flex-wrap items-center gap-3 bg-green-700 text-white px-4 py-2.5 rounded-xl mb-3 text-sm">
+                <span className="font-semibold">{selectedClassrooms.size} 教室を選択中</span>
+                <div className="flex gap-2 ml-auto">
+                  <button
+                    onClick={() => { setActiveTab('records'); }}
+                    className="px-3 py-1.5 text-xs font-semibold bg-white text-green-800 rounded-lg hover:bg-green-50 transition-colors whitespace-nowrap">
+                    受講記録を表示
+                  </button>
+                  <button
+                    onClick={() => exportRecordsCsv(selectedClassrooms)}
+                    className="px-3 py-1.5 text-xs font-semibold bg-green-600 hover:bg-green-500 border border-green-400 text-white rounded-lg transition-colors whitespace-nowrap">
+                    ↓ CSVで出力
+                  </button>
+                  <button
+                    onClick={() => setSelectedClassrooms(new Set())}
+                    className="px-3 py-1.5 text-xs text-green-200 hover:text-white transition-colors whitespace-nowrap">
+                    選択解除
+                  </button>
+                </div>
+              </div>
+            )}
+
             {classrooms.length === 0 ? (
               <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-xl border border-green-200">
                 教室が登録されていません。「教室CSV取込」から追加してください。
@@ -271,6 +328,17 @@ export default function OperatorDashboard() {
                 <table className="min-w-full text-sm">
                   <thead className="bg-green-50 border-b border-green-200">
                     <tr>
+                      {/* 全選択チェックボックス */}
+                      <th className="px-3 py-3 w-10">
+                        <input
+                          type="checkbox"
+                          checked={allClsChecked}
+                          ref={(el) => { if (el) el.indeterminate = someClsChecked; }}
+                          onChange={toggleAllClassrooms}
+                          className="w-4 h-4 accent-green-700 cursor-pointer"
+                          title="全選択 / 全解除"
+                        />
+                      </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-green-900">教室コード</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-green-900">教室名</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">受講者数</th>
@@ -280,27 +348,45 @@ export default function OperatorDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-green-50">
-                    {classrooms.map((cls, idx) => (
-                      <tr key={idx} className={`hover:bg-green-50 transition-colors ${cls.isHQ ? 'bg-green-50' : ''}`}>
-                        <td className="px-4 py-3 font-mono text-xs text-gray-700">
-                          {cls.classroomCode}
-                          {cls.isHQ && <span className="ml-1 text-xs bg-green-700 text-white px-1.5 py-0.5 rounded-full">本部</span>}
-                        </td>
-                        <td className="px-4 py-3 text-xs font-medium text-gray-900">{cls.classroomName}</td>
-                        <td className="px-4 py-3 text-center text-xs text-gray-600">{cls.totalTrainees ?? 0}</td>
-                        <td className="px-4 py-3 text-center text-xs font-semibold text-green-700">{cls.passedTrainees ?? 0}</td>
-                        <td className="px-4 py-3 text-center">
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${cls.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-500'}`}>
-                            {cls.status === 'active' ? '有効' : '停止'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <UrlCopyButton onClick={() => copyUrl(cls.classroomCode, auth.operatorCode)} />
-                        </td>
-                      </tr>
-                    ))}
+                    {classrooms.map((cls, idx) => {
+                      const isChecked = selectedClassrooms.has(cls.classroomCode);
+                      return (
+                        <tr
+                          key={idx}
+                          onClick={() => toggleClassroom(cls.classroomCode)}
+                          className={`cursor-pointer transition-colors ${isChecked ? 'bg-green-50' : cls.isHQ ? 'bg-green-50/50' : 'hover:bg-green-50'}`}>
+                          <td className="px-3 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleClassroom(cls.classroomCode)}
+                              className="w-4 h-4 accent-green-700 cursor-pointer"
+                            />
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs text-gray-700">
+                            {cls.classroomCode}
+                            {cls.isHQ && <span className="ml-1 text-xs bg-green-700 text-white px-1.5 py-0.5 rounded-full">本部</span>}
+                          </td>
+                          <td className="px-4 py-3 text-xs font-medium text-gray-900">{cls.classroomName}</td>
+                          <td className="px-4 py-3 text-center text-xs text-gray-600">{cls.totalTrainees ?? 0}</td>
+                          <td className="px-4 py-3 text-center text-xs font-semibold text-green-700">{cls.passedTrainees ?? 0}</td>
+                          <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${cls.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-500'}`}>
+                              {cls.status === 'active' ? '有効' : '停止'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            <UrlCopyButton onClick={() => copyUrl(cls.classroomCode, auth.operatorCode)} />
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
+                <div className="px-4 py-2 border-t border-green-100 bg-green-50 text-xs text-gray-400 flex items-center justify-between">
+                  <span>{selectedClassrooms.size > 0 ? `${selectedClassrooms.size} / ${classrooms.length} 教室を選択中` : '行をクリックして教室を選択できます'}</span>
+                  <span>{classrooms.length} 教室</span>
+                </div>
               </div>
             )}
           </>
@@ -309,44 +395,77 @@ export default function OperatorDashboard() {
         {/* 受講記録 */}
         {!loading && activeTab === 'records' && (
           <>
+            {/* 教室フィルタ中バナー */}
+            {selectedClassrooms.size > 0 && (
+              <div className="flex items-center gap-3 bg-green-50 border border-green-300 rounded-xl px-4 py-2.5 mb-3 text-xs">
+                <span className="font-semibold text-green-800">
+                  {selectedClassrooms.size} 教室でフィルタ中：
+                  {classrooms
+                    .filter((c) => selectedClassrooms.has(c.classroomCode))
+                    .map((c) => c.classroomName)
+                    .join('、')}
+                </span>
+                <button
+                  onClick={() => setSelectedClassrooms(new Set())}
+                  className="ml-auto text-green-600 hover:text-green-800 font-semibold whitespace-nowrap transition-colors">
+                  ✕ フィルタ解除
+                </button>
+              </div>
+            )}
+
             {/* CSV出力バー */}
             {records.length > 0 && (
               <div className="bg-white border border-green-200 rounded-xl px-4 py-3 mb-4 flex flex-wrap items-center gap-3">
                 <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">📥 CSV出力</span>
                 <div className="flex flex-wrap items-center gap-2 ml-auto">
-                  {/* 事業者全体 */}
-                  <button
-                    onClick={() => exportRecordsCsv('')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-green-700 hover:bg-green-600 text-white rounded-lg transition-colors whitespace-nowrap">
-                    ↓ 事業者全体
-                  </button>
-                  {/* 教室別 */}
-                  <div className="flex items-center gap-1.5">
-                    <select
-                      value={csvClassroom}
-                      onChange={(e) => setCsvClassroom(e.target.value)}
-                      className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-500">
-                      <option value="">教室を選択</option>
-                      {classrooms.map((c) => (
-                        <option key={c.classroomCode} value={c.classroomCode}>
-                          {c.classroomName}（{c.classroomCode}）
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={() => csvClassroom && exportRecordsCsv(csvClassroom)}
-                      disabled={!csvClassroom}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed text-green-700 border border-green-400 rounded-lg transition-colors whitespace-nowrap">
-                      ↓ 教室別
-                    </button>
-                  </div>
+                  {selectedClassrooms.size > 0 ? (
+                    <>
+                      <button
+                        onClick={() => exportRecordsCsv(selectedClassrooms)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-green-700 hover:bg-green-600 text-white rounded-lg transition-colors whitespace-nowrap">
+                        ↓ 選択した {selectedClassrooms.size} 教室
+                      </button>
+                      <button
+                        onClick={() => exportRecordsCsv('')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-green-50 text-green-700 border border-green-400 rounded-lg transition-colors whitespace-nowrap">
+                        ↓ 事業者全体
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => exportRecordsCsv('')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-green-700 hover:bg-green-600 text-white rounded-lg transition-colors whitespace-nowrap">
+                        ↓ 事業者全体
+                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <select
+                          value={csvClassroom}
+                          onChange={(e) => setCsvClassroom(e.target.value)}
+                          className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-500">
+                          <option value="">教室を選択</option>
+                          {classrooms.map((c) => (
+                            <option key={c.classroomCode} value={c.classroomCode}>
+                              {c.classroomName}（{c.classroomCode}）
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => csvClassroom && exportRecordsCsv(csvClassroom)}
+                          disabled={!csvClassroom}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed text-green-700 border border-green-400 rounded-lg transition-colors whitespace-nowrap">
+                          ↓ 教室別
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
 
-            {records.length === 0 ? (
+            {displayedRecords.length === 0 ? (
               <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-xl border border-green-200">
-                受講記録がありません。
+                {records.length === 0 ? '受講記録がありません。' : '選択した教室の受講記録がありません。'}
               </div>
             ) : (
               <div className="bg-white rounded-xl shadow-sm border border-green-200 overflow-hidden">
@@ -365,7 +484,7 @@ export default function OperatorDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-green-50">
-                      {records.map((r, idx) => (
+                      {displayedRecords.map((r, idx) => (
                         <tr key={idx} className="hover:bg-green-50 transition-colors">
                           <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
                             {r.submittedAt ? new Date(r.submittedAt).toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
@@ -392,7 +511,7 @@ export default function OperatorDashboard() {
                   </table>
                 </div>
                 <div className="px-4 py-2 border-t border-green-100 bg-green-50 text-xs text-gray-400 text-right">
-                  {records.length} 件
+                  {displayedRecords.length} 件{selectedClassrooms.size > 0 && `（全 ${records.length} 件中）`}
                 </div>
               </div>
             )}
