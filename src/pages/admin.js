@@ -939,10 +939,30 @@ export default function AdminPage() {
                             ) : <span className="text-gray-300">—</span>}
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <button onClick={() => openStatusModal(t)}
-                              className="text-xs px-2.5 py-1 bg-white border border-green-400 text-green-700 hover:bg-green-50 rounded transition-colors whitespace-nowrap">
-                              ステータス変更
-                            </button>
+                            <div className="flex items-center gap-2 justify-center flex-wrap">
+                              <button onClick={() => openStatusModal(t)}
+                                className="text-xs px-2.5 py-1 bg-white border border-green-400 text-green-700 hover:bg-green-50 rounded transition-colors whitespace-nowrap">
+                                ステータス変更
+                              </button>
+                              {(() => {
+                                const base = typeof window !== 'undefined' ? window.location.origin : '';
+                                const trackParam = t.track === 'manager' ? '&track=manager' : '';
+                                const retrainUrl = `${base}/register?biz=${t.operatorCode}&cls=${t.classroomCode}${trackParam}`;
+                                const key = `retrain-${t.id}`;
+                                return (
+                                  <button
+                                    onClick={() => copyUrl(key, retrainUrl)}
+                                    className={`text-xs px-2.5 py-1 rounded border transition-colors whitespace-nowrap ${
+                                      copiedKey === key
+                                        ? 'bg-green-700 text-white border-green-700'
+                                        : 'bg-white border-blue-300 text-blue-600 hover:bg-blue-50'
+                                    }`}
+                                  >
+                                    {copiedKey === key ? '✓ コピー済' : '🔗 再研修URL'}
+                                  </button>
+                                );
+                              })()}
+                            </div>
                           </td>
                         </tr>
                         );

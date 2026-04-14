@@ -64,6 +64,18 @@ export default function OperatorDashboard() {
   const [modalNotes, setModalNotes] = useState('');
   const [statusUpdating, setStatusUpdating] = useState(false);
 
+  // 再研修URLコピー
+  const [copiedTraineeId, setCopiedTraineeId] = useState('');
+  const copyRetrainUrl = (traineeId, operatorCode, classroomCode, track) => {
+    const base = typeof window !== 'undefined' ? window.location.origin : '';
+    const trackParam = track === 'manager' ? '&track=manager' : '';
+    const url = `${base}/register?biz=${operatorCode}&cls=${classroomCode}${trackParam}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedTraineeId(traineeId);
+      setTimeout(() => setCopiedTraineeId(''), 2000);
+    });
+  };
+
   // 汎用確認モーダル（confirm()の代替）
   const [confirmModal, setConfirmModal] = useState(null); // { message, onConfirm } | { message, errorOnly: true }
 
@@ -764,10 +776,22 @@ export default function OperatorDashboard() {
                             ) : <span className="text-gray-300">—</span>}
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <button onClick={() => openStatusModal(t)}
-                              className="text-xs px-2.5 py-1 bg-white border border-green-400 text-green-700 hover:bg-green-50 rounded transition-colors whitespace-nowrap">
-                              ステータス変更
-                            </button>
+                            <div className="flex items-center gap-2 justify-center flex-wrap">
+                              <button onClick={() => openStatusModal(t)}
+                                className="text-xs px-2.5 py-1 bg-white border border-green-400 text-green-700 hover:bg-green-50 rounded transition-colors whitespace-nowrap">
+                                ステータス変更
+                              </button>
+                              <button
+                                onClick={() => copyRetrainUrl(t.id, t.operatorCode, t.classroomCode, t.track)}
+                                className={`text-xs px-2.5 py-1 rounded border transition-colors whitespace-nowrap ${
+                                  copiedTraineeId === t.id
+                                    ? 'bg-green-700 text-white border-green-700'
+                                    : 'bg-white border-blue-300 text-blue-600 hover:bg-blue-50'
+                                }`}
+                              >
+                                {copiedTraineeId === t.id ? '✓ コピー済' : '🔗 再研修URL'}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                         );

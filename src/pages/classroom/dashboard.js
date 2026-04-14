@@ -70,6 +70,18 @@ export default function ClassroomDashboard() {
   const [statusError, setStatusError] = useState('');
   const modalRef = useRef(null);
 
+  // 再研修URLコピー
+  const [copiedTraineeId, setCopiedTraineeId] = useState('');
+  const copyRetrainUrl = (traineeId, operatorCode, classroomCode, track) => {
+    const base = typeof window !== 'undefined' ? window.location.origin : '';
+    const trackParam = track === 'manager' ? '&track=manager' : '';
+    const url = `${base}/register?biz=${operatorCode}&cls=${classroomCode}${trackParam}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedTraineeId(traineeId);
+      setTimeout(() => setCopiedTraineeId(''), 2000);
+    });
+  };
+
   // 削除確認モーダル
   const [deleteModal, setDeleteModal] = useState(null); // { id, fullName }
   const [deleteUpdating, setDeleteUpdating] = useState(false);
@@ -601,12 +613,22 @@ export default function ClassroomDashboard() {
                           })()}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <button
                               onClick={() => openStatusModal(t)}
                               className="text-xs bg-white border border-green-300 text-green-700 hover:bg-green-50 active:bg-green-100 transition-colors px-3 py-1.5 rounded-lg font-medium shadow-sm"
                             >
                               ステータス変更
+                            </button>
+                            <button
+                              onClick={() => copyRetrainUrl(t.id, auth.operatorCode, auth.classroomCode, t.track)}
+                              className={`text-xs px-3 py-1.5 rounded-lg border font-medium shadow-sm transition-colors whitespace-nowrap ${
+                                copiedTraineeId === t.id
+                                  ? 'bg-green-700 text-white border-green-700'
+                                  : 'bg-white border-blue-300 text-blue-600 hover:bg-blue-50 active:bg-blue-100'
+                              }`}
+                            >
+                              {copiedTraineeId === t.id ? '✓ コピー済' : '🔗 再研修URL'}
                             </button>
                             {statusKey === 'suspended' && (
                               <button
