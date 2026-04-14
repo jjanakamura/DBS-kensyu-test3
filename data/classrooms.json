@@ -5,28 +5,32 @@
     "classroomName": "本部",
     "isHQ": true,
     "status": "active",
-    "createdAt": "2025-04-01"
+    "createdAt": "2025-04-01",
+    "classroomPassword": "A001-HQ"
   },
   {
     "classroomCode": "A001-C01",
     "operatorCode": "A001",
     "classroomName": "渋谷校",
     "status": "active",
-    "createdAt": "2025-04-01"
+    "createdAt": "2025-04-01",
+    "classroomPassword": "A001-C01"
   },
   {
     "classroomCode": "A001-C02",
     "operatorCode": "A001",
     "classroomName": "新宿校",
     "status": "active",
-    "createdAt": "2025-04-01"
+    "createdAt": "2025-04-01",
+    "classroomPassword": "A001-C02"
   },
   {
     "classroomCode": "A001-C03",
     "operatorCode": "A001",
     "classroomName": "池袋校",
     "status": "active",
-    "createdAt": "2025-04-01"
+    "createdAt": "2025-04-01",
+    "classroomPassword": "A001-C03"
   },
   {
     "classroomCode": "A002-HQ",
@@ -34,14 +38,16 @@
     "classroomName": "本部",
     "isHQ": true,
     "status": "active",
-    "createdAt": "2025-04-01"
+    "createdAt": "2025-04-01",
+    "classroomPassword": "A002-HQ"
   },
   {
     "classroomCode": "A002-C01",
     "operatorCode": "A002",
     "classroomName": "本部",
     "status": "active",
-    "createdAt": "2025-04-01"
+    "createdAt": "2025-04-01",
+    "classroomPassword": "A002-C01"
   },
   {
     "classroomCode": "A003-HQ",
@@ -49,14 +55,16 @@
     "classroomName": "本部",
     "isHQ": true,
     "status": "active",
-    "createdAt": "2025-04-01"
+    "createdAt": "2025-04-01",
+    "classroomPassword": "A003-HQ"
   },
   {
     "classroomCode": "A003-C01",
     "operatorCode": "A003",
     "classroomName": "本校",
     "status": "active",
-    "createdAt": "2025-04-01"
+    "createdAt": "2025-04-01",
+    "classroomPassword": "A003-C01"
   },
   {
     "classroomCode": "A004-HQ",
@@ -64,7 +72,8 @@
     "classroomName": "本部",
     "isHQ": true,
     "status": "active",
-    "createdAt": "2025-05-10"
+    "createdAt": "2025-05-10",
+    "classroomPassword": "A004-HQ"
   },
   {
     "classroomCode": "A005-HQ",
@@ -72,7 +81,8 @@
     "classroomName": "本部",
     "isHQ": true,
     "status": "active",
-    "createdAt": "2025-06-01"
+    "createdAt": "2025-06-01",
+    "classroomPassword": "A005-HQ"
   },
   {
     "classroomCode": "B001-HQ",
@@ -80,21 +90,24 @@
     "classroomName": "本部",
     "isHQ": true,
     "status": "active",
-    "createdAt": "2025-09-01"
+    "createdAt": "2025-09-01",
+    "classroomPassword": "B001-HQ"
   },
   {
     "classroomCode": "B001-C01",
     "operatorCode": "B001",
     "classroomName": "東京本部",
     "status": "active",
-    "createdAt": "2025-09-01"
+    "createdAt": "2025-09-01",
+    "classroomPassword": "B001-C01"
   },
   {
     "classroomCode": "B001-C02",
     "operatorCode": "B001",
     "classroomName": "横浜校",
     "status": "active",
-    "createdAt": "2025-09-01"
+    "createdAt": "2025-09-01",
+    "classroomPassword": "B001-C02"
   },
   {
     "classroomCode": "B002-HQ",
@@ -102,6 +115,7 @@
     "classroomName": "本部",
     "isHQ": true,
     "status": "inactive",
-    "createdAt": "2025-10-15"
+    "createdAt": "2025-10-15",
+    "classroomPassword": "B002-HQ"
   }
 ]

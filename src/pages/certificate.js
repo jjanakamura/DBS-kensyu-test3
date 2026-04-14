@@ -10,6 +10,13 @@ import Layout from '../components/Layout';
  * - jsPDF + html2canvas で PDF 出力（ダウンロード）
  */
 
+function calcExpiry(completionDate) {
+  if (!completionDate) return null;
+  const m = completionDate.match(/(\d+)年(\d+)月(\d+)日/);
+  if (!m) return null;
+  return `${parseInt(m[1]) + 1}年${m[2]}月${m[3]}日`;
+}
+
 export default function CertificatePage() {
   const router = useRouter();
   const [trainee, setTrainee] = useState(null);
@@ -96,6 +103,7 @@ export default function CertificatePage() {
   if (!trainee || !result) return null;
 
   const { completionDate, certNumber } = result;
+  const expiryDate = calcExpiry(completionDate);
   const isManager = trainee.track === 'manager';
 
   // コース別設定
@@ -204,8 +212,8 @@ export default function CertificatePage() {
               </p>
             </div>
 
-            {/* 修了番号・修了日 */}
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: '10%', borderTop: '1px solid #d1fae5', paddingTop: '12px' }}>
+            {/* 修了番号・修了日・有効期限 */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: expiryDate ? '6%' : '10%', borderTop: '1px solid #d1fae5', paddingTop: '12px' }}>
               <div style={{ textAlign: 'center' }}>
                 <p style={{ fontSize: '9px', color: '#9ca3af', marginBottom: '2px' }}>修了番号</p>
                 <p style={{ fontSize: 'clamp(10px, 1.4vw, 12px)', fontFamily: 'monospace', color: '#374151', fontWeight: 'bold', margin: 0 }}>{certNumber}</p>
@@ -214,6 +222,13 @@ export default function CertificatePage() {
                 <p style={{ fontSize: '9px', color: '#9ca3af', marginBottom: '2px' }}>修了日</p>
                 <p style={{ fontSize: 'clamp(10px, 1.5vw, 13px)', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>{completionDate}</p>
               </div>
+              {expiryDate && (
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '9px', color: '#9ca3af', marginBottom: '2px' }}>有効期限</p>
+                  <p style={{ fontSize: 'clamp(10px, 1.5vw, 13px)', fontWeight: 'bold', color: '#b45309', margin: 0 }}>{expiryDate}</p>
+                  <p style={{ fontSize: '8px', color: '#d97706', margin: '2px 0 0 0' }}>修了日より1年間</p>
+                </div>
+              )}
             </div>
 
             {/* 発行者 */}

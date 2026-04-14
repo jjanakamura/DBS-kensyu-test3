@@ -9,6 +9,13 @@ import Layout from '../components/Layout';
 
 const ADMIN_PASSWORD = 'admin2024';
 
+function calcExpiry(completionDate) {
+  if (!completionDate) return null;
+  const m = completionDate.match(/(\d+)年(\d+)月(\d+)日/);
+  if (!m) return null;
+  return `${parseInt(m[1]) + 1}年${m[2]}月${m[3]}日`;
+}
+
 function getBaseUrl() {
   return typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com';
 }
@@ -52,6 +59,15 @@ export default function AdminPage() {
 
   // URLコピー
   const [copiedKey, setCopiedKey] = useState('');
+
+  // 新規事業者登録フォーム
+  const [showAddOpForm, setShowAddOpForm]   = useState(false);
+  const [newOpCode, setNewOpCode]           = useState('');
+  const [newOpName, setNewOpName]           = useState('');
+  const [newOpContact, setNewOpContact]     = useState('');
+  const [newOpPassword, setNewOpPassword]   = useState('');
+  const [addOpError, setAddOpError]         = useState('');
+  const [addOpLoading, setAddOpLoading]     = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -190,6 +206,37 @@ export default function AdminPage() {
     finally { setStatusUpdating(false); }
   };
 
+  const handleAddOperator = async (e) => {
+    e.preventDefault();
+    setAddOpError('');
+    setAddOpLoading(true);
+    try {
+      const res = await fetch('/api/add-operator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operatorCode: newOpCode,
+          companyName:  newOpName,
+          contactName:  newOpContact,
+          adminPassword: newOpPassword,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setAddOpError(data.error || '登録に失敗しました。');
+      } else {
+        // Reset form and refresh operator list
+        setShowAddOpForm(false);
+        setNewOpCode(''); setNewOpName(''); setNewOpContact(''); setNewOpPassword('');
+        await refresh();  // refresh() is already defined in the file
+      }
+    } catch {
+      setAddOpError('通信エラーが発生しました。');
+    } finally {
+      setAddOpLoading(false);
+    }
+  };
+
   const statusLabel = (s) => {
     if (s === 'active') return '在籍中';
     if (s === 'retired') return '退職済';
@@ -326,6 +373,7 @@ export default function AdminPage() {
                           { field: 'score', label: '得点' },
                           { field: 'passed', label: '合否' },
                           { field: 'completionDate', label: '修了日' },
+                          { field: 'expiry', label: '有効期限' },
                         ].map((col) => (
                           <th key={col.field} onClick={() => handleSort(col.field)}
                             className="px-4 py-3 text-left text-xs font-semibold text-green-900 cursor-pointer hover:text-green-700 whitespace-nowrap select-none">
@@ -358,6 +406,7 @@ export default function AdminPage() {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{r.completionDate || '—'}</td>
+                          <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{calcExpiry(r.completionDate) || '—'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -374,6 +423,57 @@ export default function AdminPage() {
         {/* ===== タブ②：事業者一覧 ===== */}
         {activeTab === 'operators' && (
           <>
+            {/* 新規事業者登録 */}
+            <div className="mb-4">
+              <button
+                onClick={() => { setShowAddOpForm(v => !v); setAddOpError(''); }}
+                className="flex items-center gap-2 bg-green-800 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+              >
+                <span>＋</span> 新規事業者を登録する
+              </button>
+              {showAddOpForm && (
+                <form onSubmit={handleAddOperator} className="mt-3 bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
+                  <h3 className="text-sm font-bold text-green-900">新規事業者登録</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">事業者コード ＊</label>
+                      <input value={newOpCode} onChange={e=>setNewOpCode(e.target.value.toUpperCase())}
+                        placeholder="例：C001" required
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 font-mono" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">会社名 ＊</label>
+                      <input value={newOpName} onChange={e=>setNewOpName(e.target.value)}
+                        placeholder="例：株式会社〇〇" required
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">担当者名</label>
+                      <input value={newOpContact} onChange={e=>setNewOpContact(e.target.value)}
+                        placeholder="例：田中 一郎"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">初期パスワード ＊</label>
+                      <input value={newOpPassword} onChange={e=>setNewOpPassword(e.target.value)}
+                        placeholder="8文字以上推奨" required
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" />
+                    </div>
+                  </div>
+                  {addOpError && <p className="text-xs text-red-600">{addOpError}</p>}
+                  <div className="flex gap-2 pt-1">
+                    <button type="submit" disabled={addOpLoading}
+                      className="bg-green-800 hover:bg-green-700 disabled:bg-gray-400 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors">
+                      {addOpLoading ? '登録中...' : '登録する'}
+                    </button>
+                    <button type="button" onClick={()=>setShowAddOpForm(false)}
+                      className="border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm px-4 py-2 rounded-lg transition-colors">
+                      キャンセル
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
             <div className="flex flex-wrap gap-3 mb-4">
               <input type="text" value={opSearch} onChange={(e) => setOpSearch(e.target.value)}
                 placeholder="事業者コード・事業者名・担当者名で検索..."
