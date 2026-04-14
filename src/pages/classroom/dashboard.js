@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
+import dynamic from 'next/dynamic';
+const QRCodeCanvas = dynamic(() => import('qrcode.react').then(m => m.QRCodeCanvas), { ssr: false });
 
 /**
  * 教室管理者ダッシュボード
@@ -33,6 +35,9 @@ export default function ClassroomDashboard() {
   const [records, setRecords] = useState([]);
   const [trainees, setTrainees] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // QRコードモーダル
+  const [showQr, setShowQr] = useState(false);
   const [fetchError, setFetchError] = useState('');
 
   // タブ
@@ -255,16 +260,24 @@ export default function ClassroomDashboard() {
             {auth.classroomName}
           </h1>
         </div>
-        <button
-          onClick={handleLogout}
-          className="self-start sm:self-auto inline-flex items-center gap-1.5 text-sm bg-white border border-green-300 text-green-700 hover:bg-green-50 active:bg-green-100 transition-colors px-4 py-2 rounded-lg shadow-sm font-medium"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
-          </svg>
-          ログアウト
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowQr(true)}
+            className="self-start sm:self-auto inline-flex items-center gap-1.5 text-sm bg-purple-700 hover:bg-purple-600 active:bg-purple-800 text-white transition-colors px-4 py-2 rounded-lg shadow-sm font-medium"
+          >
+            📷 受講画面QRコード
+          </button>
+          <button
+            onClick={handleLogout}
+            className="self-start sm:self-auto inline-flex items-center gap-1.5 text-sm bg-white border border-green-300 text-green-700 hover:bg-green-50 active:bg-green-100 transition-colors px-4 py-2 rounded-lg shadow-sm font-medium"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
+            </svg>
+            ログアウト
+          </button>
+        </div>
       </div>
 
       {/* ── フェッチエラー ── */}
@@ -620,6 +633,52 @@ export default function ClassroomDashboard() {
                   </svg>
                 )}
                 {statusUpdating ? '更新中…' : '変更を保存'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ════ 受講画面QRコードモーダル ════ */}
+      {showQr && auth && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowQr(false)}>
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full text-center"
+            onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-gray-900 mb-1">📷 受講画面QRコード</h3>
+            <p className="text-sm text-gray-500 mb-1">{auth.classroomName}</p>
+            <p className="text-xs text-gray-400 mb-4">（{auth.classroomCode}）</p>
+            <div className="flex justify-center mb-3 p-3 bg-white border border-gray-100 rounded-xl">
+              <QRCodeCanvas
+                id="qr-canvas"
+                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/register?biz=${auth.operatorCode}&cls=${auth.classroomCode}`}
+                size={220}
+                level="M"
+                includeMargin={true}
+                bgColor="#ffffff"
+                fgColor="#000000"
+              />
+            </div>
+            <p className="text-xs text-gray-400 break-all mb-4 bg-gray-50 rounded p-2 text-left">
+              {typeof window !== 'undefined' ? `${window.location.origin}/register?biz=${auth.operatorCode}&cls=${auth.classroomCode}` : ''}
+            </p>
+            <p className="text-xs text-gray-500 mb-4">このQRコードを印刷・配布すると、スタッフがスマホで受講を開始できます。</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  const canvas = document.getElementById('qr-canvas');
+                  if (!canvas) return;
+                  const png = canvas.toDataURL('image/png');
+                  const a = document.createElement('a');
+                  a.href = png;
+                  a.download = `受講画面QR_${auth.classroomCode}.png`;
+                  a.click();
+                }}
+                className="flex-1 bg-purple-700 hover:bg-purple-600 text-white text-sm font-semibold py-2 rounded-lg transition-colors">
+                📥 PNG保存
+              </button>
+              <button onClick={() => setShowQr(false)}
+                className="flex-1 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-medium py-2 rounded-lg transition-colors">
+                閉じる
               </button>
             </div>
           </div>

@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
-import dynamic from 'next/dynamic';
-const QRCodeSVG = dynamic(() => import('qrcode.react').then(m => m.QRCodeSVG), { ssr: false });
 
 /**
  * 事業者管理ダッシュボード
@@ -26,9 +24,6 @@ export default function OperatorDashboard() {
 
   // 教室複数選択
   const [selectedClassrooms, setSelectedClassrooms] = useState(new Set());
-
-  // QRコードモーダル
-  const [qrModal, setQrModal] = useState(null); // { url, classroomName, classroomCode }
 
   // ステータス変更モーダル
   const [statusModal, setStatusModal] = useState(null);
@@ -350,7 +345,6 @@ export default function OperatorDashboard() {
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">合格者数</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">ステータス</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">専用URL</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">QRコード</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">教室管理</th>
                     </tr>
                   </thead>
@@ -384,18 +378,6 @@ export default function OperatorDashboard() {
                           </td>
                           <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                             <UrlCopyButton onClick={() => copyUrl(cls.classroomCode, auth.operatorCode)} />
-                          </td>
-                          <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
-                            {cls.status === 'active' && (
-                              <button
-                                onClick={() => {
-                                  const url = `${getBaseUrl()}/register?biz=${auth.operatorCode}&cls=${cls.classroomCode}`;
-                                  setQrModal({ url, classroomName: cls.classroomName, classroomCode: cls.classroomCode });
-                                }}
-                                className="text-xs px-2 py-1 rounded border border-purple-400 text-purple-700 hover:bg-purple-50 transition-colors">
-                                📷 QR
-                              </button>
-                            )}
                           </td>
                           <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                             {cls.status === 'active' && (
@@ -697,40 +679,6 @@ export default function OperatorDashboard() {
       </div>
       )}
 
-      {/* QRコードモーダル */}
-      {qrModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => setQrModal(null)}>
-          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full text-center"
-            onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-base font-bold text-gray-900 mb-1">📷 受講用QRコード</h3>
-            <p className="text-sm text-gray-500 mb-4">{qrModal.classroomName}（{qrModal.classroomCode}）</p>
-            <div className="flex justify-center mb-4">
-              <QRCodeSVG id="qr-modal-svg" value={qrModal.url} size={200} level="M" includeMargin />
-            </div>
-            <p className="text-xs text-gray-400 break-all mb-4 bg-gray-50 rounded p-2">{qrModal.url}</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  const svg = document.querySelector('#qr-modal-svg');
-                  if (!svg) return;
-                  const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
-                  const a = document.createElement('a');
-                  a.href = URL.createObjectURL(blob);
-                  a.download = `QR_${qrModal.classroomCode}.svg`;
-                  a.click();
-                }}
-                className="flex-1 border border-purple-400 text-purple-700 hover:bg-purple-50 text-sm font-medium py-2 rounded-lg transition-colors">
-                SVG保存
-              </button>
-              <button onClick={() => setQrModal(null)}
-                className="flex-1 bg-green-800 hover:bg-green-700 text-white text-sm font-semibold py-2 rounded-lg transition-colors">
-                閉じる
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </Layout>
   );
 }
