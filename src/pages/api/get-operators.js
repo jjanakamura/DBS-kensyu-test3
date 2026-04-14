@@ -1,5 +1,5 @@
-import path from 'path';
 import fs from 'fs';
+import { getDataDir } from '../../lib/dataPath';
 
 /**
  * 事業者一覧取得 API（JJA管理画面用）
@@ -13,21 +13,21 @@ export default function handler(req, res) {
   }
 
   try {
-    const dataDir = path.join(process.cwd(), 'data');
-    const operators = JSON.parse(fs.readFileSync(path.join(dataDir, 'operators.json'), 'utf-8'));
+    const dataDir = getDataDir();
+    const operators = JSON.parse(fs.readFileSync(`${dataDir}/operators.json`, 'utf-8'));
 
     // パスワードを除いて返す
     const safe = operators.map(({ adminPassword, ...rest }) => rest);
 
     // 教室数・受講者数を集計
     let classrooms = [];
-    const clsPath = path.join(dataDir, 'classrooms.json');
+    const clsPath = `${dataDir}/classrooms.json`;
     if (fs.existsSync(clsPath)) {
       classrooms = JSON.parse(fs.readFileSync(clsPath, 'utf-8') || '[]');
     }
 
     let records = [];
-    const recPath = path.join(dataDir, 'records.json');
+    const recPath = `${dataDir}/records.json`;
     if (fs.existsSync(recPath)) {
       records = JSON.parse(fs.readFileSync(recPath, 'utf-8') || '[]');
     }

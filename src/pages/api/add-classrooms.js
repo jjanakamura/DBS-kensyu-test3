@@ -1,5 +1,5 @@
-import path from 'path';
 import fs from 'fs';
+import { getDataDir } from '../../lib/dataPath';
 
 /**
  * 教室一括追加 API（CSV取込用）
@@ -23,8 +23,8 @@ export default function handler(req, res) {
   }
 
   try {
-    const dataDir = path.join(process.cwd(), 'data');
-    const filePath = path.join(dataDir, 'classrooms.json');
+    const dataDir = getDataDir();
+    const filePath = `${dataDir}/classrooms.json`;
 
     let classrooms = [];
     if (fs.existsSync(filePath)) {

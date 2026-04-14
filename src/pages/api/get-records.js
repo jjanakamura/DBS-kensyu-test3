@@ -1,5 +1,5 @@
-import path from 'path';
 import fs from 'fs';
+import { getDataPath } from '../../lib/dataPath';
 
 /**
  * 受講記録取得 API
@@ -16,7 +16,7 @@ export default function handler(req, res) {
   }
 
   try {
-    const filePath = path.join(process.cwd(), 'data', 'records.json');
+    const filePath = getDataPath('records.json');
 
     if (!fs.existsSync(filePath)) {
       return res.status(200).json({ records: [] });

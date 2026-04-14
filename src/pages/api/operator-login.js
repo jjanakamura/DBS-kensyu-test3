@@ -1,5 +1,5 @@
-import path from 'path';
 import fs from 'fs';
+import { getDataPath } from '../../lib/dataPath';
 
 /**
  * 事業者管理画面ログイン API
@@ -24,7 +24,7 @@ export default function handler(req, res) {
   }
 
   try {
-    const filePath = path.join(process.cwd(), 'data', 'operators.json');
+    const filePath = getDataPath('operators.json');
     const operators = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 
     const normalizedCode = operatorCode.trim().toUpperCase();

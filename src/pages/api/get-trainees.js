@@ -1,5 +1,5 @@
-import path from 'path';
 import fs from 'fs';
+import { getDataPath } from '../../lib/dataPath';
 
 /**
  * 受講者一覧取得 API
@@ -18,7 +18,7 @@ export default function handler(req, res) {
   const { operatorCode, includeRetired, search } = req.query;
 
   try {
-    const filePath = path.join(process.cwd(), 'data', 'trainees.json');
+    const filePath = getDataPath('trainees.json');
     let trainees = [];
     if (fs.existsSync(filePath)) {
       trainees = JSON.parse(fs.readFileSync(filePath, 'utf-8') || '[]');

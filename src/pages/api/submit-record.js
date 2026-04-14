@@ -1,5 +1,5 @@
-import path from 'path';
 import fs from 'fs';
+import { getDataPath } from '../../lib/dataPath';
 
 /**
  * 受講記録保存 API
@@ -26,7 +26,7 @@ export default function handler(req, res) {
   }
 
   try {
-    const filePath = path.join(process.cwd(), 'data', 'records.json');
+    const filePath = getDataPath('records.json');
 
     let records = [];
     if (fs.existsSync(filePath)) {
@@ -47,7 +47,7 @@ export default function handler(req, res) {
 
     // ===== 受講者プロファイルのアップサート（trainees.json） =====
     // 事業者コード + 氏名 をキーに同一人物を判定
-    const traineeFilePath = path.join(process.cwd(), 'data', 'trainees.json');
+    const traineeFilePath = getDataPath('trainees.json');
     let trainees = [];
     if (fs.existsSync(traineeFilePath)) {
       trainees = JSON.parse(fs.readFileSync(traineeFilePath, 'utf-8') || '[]');

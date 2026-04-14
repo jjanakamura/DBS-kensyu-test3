@@ -1,5 +1,5 @@
-import path from 'path';
 import fs from 'fs';
+import { getDataDir } from '../../lib/dataPath';
 
 /**
  * 教室一覧取得 API
@@ -14,8 +14,8 @@ export default function handler(req, res) {
   }
 
   try {
-    const dataDir = path.join(process.cwd(), 'data');
-    const classrooms = JSON.parse(fs.readFileSync(path.join(dataDir, 'classrooms.json'), 'utf-8'));
+    const dataDir = getDataDir();
+    const classrooms = JSON.parse(fs.readFileSync(`${dataDir}/classrooms.json`, 'utf-8'));
 
     const { operatorCode } = req.query;
 
@@ -26,7 +26,7 @@ export default function handler(req, res) {
     }
 
     // 受講記録と紐付けて受講者数・合格者数を集計
-    const filePath = path.join(dataDir, 'records.json');
+    const filePath = `${dataDir}/records.json`;
     let records = [];
     if (fs.existsSync(filePath)) {
       records = JSON.parse(fs.readFileSync(filePath, 'utf-8') || '[]');

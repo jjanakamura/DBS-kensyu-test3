@@ -1,5 +1,5 @@
-import path from 'path';
 import fs from 'fs';
+import { getDataDir } from '../../lib/dataPath';
 
 /**
  * 事業者コード・教室コード照合 API
@@ -23,10 +23,10 @@ export default function handler(req, res) {
   }
 
   try {
-    const dataDir = path.join(process.cwd(), 'data');
+    const dataDir = getDataDir();
 
     // 事業者照合
-    const operators = JSON.parse(fs.readFileSync(path.join(dataDir, 'operators.json'), 'utf-8'));
+    const operators = JSON.parse(fs.readFileSync(`${dataDir}/operators.json`, 'utf-8'));
     const normalizedCode = operatorCode.trim().toUpperCase();
     const operator = operators.find(
       (o) => o.operatorCode.trim().toUpperCase() === normalizedCode
@@ -38,7 +38,7 @@ export default function handler(req, res) {
     // 教室コードが指定されている場合は追加照合
     let classroomName = null;
     if (classroomCode) {
-      const classrooms = JSON.parse(fs.readFileSync(path.join(dataDir, 'classrooms.json'), 'utf-8'));
+      const classrooms = JSON.parse(fs.readFileSync(`${dataDir}/classrooms.json`, 'utf-8'));
       const normalizedCls = classroomCode.trim().toUpperCase();
       const classroom = classrooms.find(
         (c) =>
