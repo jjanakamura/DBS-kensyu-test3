@@ -345,6 +345,7 @@ export default function OperatorDashboard() {
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">合格者数</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">ステータス</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">専用URL</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">教室管理</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-green-50">
@@ -377,6 +378,23 @@ export default function OperatorDashboard() {
                           </td>
                           <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                             <UrlCopyButton onClick={() => copyUrl(cls.classroomCode, auth.operatorCode)} />
+                          </td>
+                          <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            {cls.status === 'active' && (
+                              <button
+                                onClick={() => {
+                                  sessionStorage.setItem('classroomAuth', JSON.stringify({
+                                    operatorCode: auth.operatorCode,
+                                    classroomCode: cls.classroomCode,
+                                    companyName: auth.companyName,
+                                    classroomName: cls.classroomName,
+                                  }));
+                                  router.push('/classroom/dashboard');
+                                }}
+                                className="text-xs px-2 py-1 rounded border border-blue-400 text-blue-700 hover:bg-blue-50 transition-colors whitespace-nowrap">
+                                📋 教室管理へ
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );

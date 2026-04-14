@@ -60,6 +60,9 @@ export default function AdminPage() {
   // URLコピー
   const [copiedKey, setCopiedKey] = useState('');
 
+  // パスワード表示トグル
+  const [showPasswords, setShowPasswords] = useState(false);
+
   // 新規事業者登録フォーム
   const [showAddOpForm, setShowAddOpForm]   = useState(false);
   const [newOpCode, setNewOpCode]           = useState('');
@@ -77,7 +80,7 @@ export default function AdminPage() {
     try {
       const [recRes, opRes, clsRes, trnRes] = await Promise.all([
         fetch('/api/get-records'),
-        fetch('/api/get-operators'),
+        fetch('/api/get-operators?includePasswords=true'),
         fetch('/api/get-classrooms'),
         fetch('/api/get-trainees?includeRetired=true'),
       ]);
@@ -94,7 +97,7 @@ export default function AdminPage() {
     try {
       const [recRes, opRes, clsRes, trnRes] = await Promise.all([
         fetch('/api/get-records'),
-        fetch('/api/get-operators'),
+        fetch('/api/get-operators?includePasswords=true'),
         fetch('/api/get-classrooms'),
         fetch('/api/get-trainees?includeRetired=true'),
       ]);
@@ -495,7 +498,17 @@ export default function AdminPage() {
                       <th className="px-4 py-3 text-left text-xs font-semibold text-green-900">事業者コード</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-green-900">事業者名</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-green-900">担当者名</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-green-900">担当者メール</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-green-900">
+                        <div className="flex items-center gap-2">
+                          <span>パスワード</span>
+                          <button
+                            onClick={() => setShowPasswords(v => !v)}
+                            className="text-xs px-1.5 py-0.5 rounded border border-green-400 text-green-700 hover:bg-green-100 transition-colors"
+                            title={showPasswords ? 'パスワードを隠す' : 'パスワードを表示'}>
+                            {showPasswords ? '🙈 隠す' : '👁 表示'}
+                          </button>
+                        </div>
+                      </th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">教室数</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">受講者数</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-green-900">合格者数</th>
@@ -512,7 +525,11 @@ export default function AdminPage() {
                           <td className="px-4 py-3 font-mono text-xs font-bold text-gray-800">{op.operatorCode}</td>
                           <td className="px-4 py-3 text-xs text-gray-900 whitespace-nowrap">{op.companyName}</td>
                           <td className="px-4 py-3 text-xs text-gray-700 whitespace-nowrap">{op.contactName || '—'}</td>
-                          <td className="px-4 py-3 text-xs text-gray-600">{op.contactEmail || '—'}</td>
+                          <td className="px-4 py-3 text-xs font-mono">
+                            {showPasswords
+                              ? <span className="bg-amber-50 border border-amber-200 text-amber-800 px-2 py-0.5 rounded font-bold select-all">{op.adminPassword || '—'}</span>
+                              : <span className="text-gray-300 tracking-widest">••••••••</span>}
+                          </td>
                           <td className="px-4 py-3 text-center text-xs text-gray-700">{op.classroomCount ?? 0}</td>
                           <td className="px-4 py-3 text-center text-xs text-gray-700">{op.traineeCount ?? 0}</td>
                           <td className="px-4 py-3 text-center text-xs font-semibold text-green-700">{op.passedCount ?? 0}</td>

@@ -5,19 +5,23 @@ import { getDataDir } from '../../lib/dataPath';
  * 事業者一覧取得 API（JJA管理画面用）
  * GET /api/get-operators
  *
- * adminPassword は除いて返す（セキュリティ）
+ * ?includePasswords=true を付けると adminPassword も含めて返す（管理画面専用）
  */
 export default function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const { includePasswords } = req.query;
+
   try {
     const dataDir = getDataDir();
     const operators = JSON.parse(fs.readFileSync(`${dataDir}/operators.json`, 'utf-8'));
 
-    // パスワードを除いて返す
-    const safe = operators.map(({ adminPassword, ...rest }) => rest);
+    // includePasswords=true の場合はパスワードをそのまま返す
+    const safe = includePasswords === 'true'
+      ? operators
+      : operators.map(({ adminPassword, ...rest }) => rest);
 
     // 教室数・受講者数を集計
     let classrooms = [];
