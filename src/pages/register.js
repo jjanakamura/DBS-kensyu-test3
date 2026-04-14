@@ -19,6 +19,7 @@ export default function Register() {
   const [urlParamsApplied, setUrlParamsApplied] = useState(false);
   const [track, setTrack] = useState('general'); // 'general' | 'manager'
   const [pledged, setPledged] = useState(false);
+  const [consented, setConsented] = useState(false); // 個人情報同意
 
   // URLパラメータ ?biz=A001&cls=A001-C01&track=manager の自動処理
   useEffect(() => {
@@ -83,6 +84,7 @@ export default function Register() {
     else if (codeStatus !== 'ok') errs.operatorCode = '有効な事業者コードを入力・照合してください。';
     if (!form.classroomName.trim()) errs.classroomName = '教室名を入力してください。';
     if (!form.fullName.trim()) errs.fullName = '氏名を入力してください。';
+    if (!consented) errs.consented = 'プライバシーポリシーへの同意が必要です。';
     if (!pledged) errs.pledged = '本人受講の誓約にチェックしてください。';
     return errs;
   };
@@ -98,6 +100,7 @@ export default function Register() {
       classroomName: form.classroomName.trim(),
       fullName: form.fullName.trim(),
       track: track || 'general',
+      consentedAt: new Date().toISOString(),
     }));
     router.push('/video');
   };
@@ -213,6 +216,41 @@ export default function Register() {
               onChange={(e) => setForm({ ...form, fullName: e.target.value })}
               placeholder="例：山田 太郎" className={inputClass('fullName')} />
             {errors.fullName && <p className="mt-1 text-xs text-red-600">{errors.fullName}</p>}
+          </div>
+
+          {/* 個人情報の取り扱いに関する同意 */}
+          <div className={`rounded-lg border p-4 ${errors.consented ? 'border-red-400 bg-red-50' : 'border-blue-100 bg-blue-50'}`}>
+            <p className="text-xs font-bold text-blue-900 mb-2">🔒 個人情報の取り扱いについて</p>
+            <div className="text-xs text-gray-700 space-y-1 mb-3">
+              <p><span className="font-semibold">収集する情報：</span>氏名、所属教室名、受講記録（修了日・テスト結果）</p>
+              <p><span className="font-semibold">利用目的：</span>受講記録の管理、修了証の発行、有効期限の管理、再研修のご案内</p>
+              <p><span className="font-semibold">第三者提供：</span>法令に基づく場合を除き、第三者への提供は行いません。</p>
+              <p><span className="font-semibold">管理者：</span>一般社団法人全国学習塾協会（JJA）</p>
+              <p className="mt-1">
+                詳細は
+                <a
+                  href="https://jja.or.jp/privacy-policy-2/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-700 underline font-semibold ml-0.5 mr-0.5"
+                >
+                  プライバシーポリシー
+                </a>
+                をご確認ください。
+              </p>
+            </div>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={consented}
+                onChange={(e) => setConsented(e.target.checked)}
+                className="mt-0.5 flex-shrink-0 w-4 h-4 accent-blue-700"
+              />
+              <span className="text-sm text-gray-800 leading-relaxed">
+                プライバシーポリシーに同意し、上記の目的での<strong>個人情報の取り扱いに同意</strong>します。<span className="text-red-500 ml-0.5">*</span>
+              </span>
+            </label>
+            {errors.consented && <p className="mt-2 text-xs text-red-600">{errors.consented}</p>}
           </div>
 
           {/* 本人受講の誓約 */}
