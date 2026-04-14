@@ -6,19 +6,22 @@ import { getDataPath } from '../../../lib/dataPath';
  * GET  /api/cron/cleanup-trainees  → Vercel Cron Job（毎日自動実行）
  * POST /api/cron/cleanup-trainees  → 管理画面から手動実行
  *
- * 削除ルール（JIS Q 15001 / 個人情報保護法 準拠）:
- *   Rule 1: ステータス「停止中」かつ停止処理から 30日 超過
- *   Rule 2: ステータス「在籍中」かつ研修有効期限から 30日 超過
- *   Rule 3: ステータス「退職済み」かつ退職処理から 90日 超過
+ * 削除ルール（JIS Q 15001 / 個人情報保護法 / ISO 27001 準拠）:
+ *   Rule 1: ステータス「停止中」かつ停止処理から 30日 超過 → 削除
+ *   Rule 2: ステータス「在籍中」かつ有効期限切れ → 【削除しない・警告表示のみ】
+ *           理由: 在籍中＝利用目的（再研修管理）が継続しているため削除不可
+ *                 個人情報保護法第19条「利用目的を達成したら削除」の逆解釈として、
+ *                 目的が継続している間は保持が正当化される
+ *   Rule 3: ステータス「退職済み」かつ退職処理から 90日 超過 → 削除
  *
  * ・受講者プロファイル（trainees.json）と受講記録（records.json）を両方削除
  * ・削除ログ（cleanup-log.json）には個人情報を含まず ID のみ記録
  */
 
 export const CLEANUP_RULES = {
-  suspendedDays: 30,        // 停止中 → 30日後
-  expiredActiveDays: 30,    // 在籍中＋有効期限切れ → 30日後
-  retiredDays: 90,          // 退職済み → 90日後
+  suspendedDays: 30,   // 停止中 → 30日後に削除
+  retiredDays: 90,     // 退職済み → 90日後に削除
+  // 在籍中は有効期限切れでも削除しない（管理画面で警告表示のみ）
 };
 
 /** "2026年4月12日" → Date オブジェクト */
@@ -62,31 +65,9 @@ function checkDeletion(trainee, records, now) {
     }
   }
 
-  // Rule 2: 在籍中 + 有効期限切れ
-  if (trainee.status === 'active') {
-    const passed = records
-      .filter(
-        (r) =>
-          r.passed &&
-          r.operatorCode === trainee.operatorCode &&
-          r.fullName === trainee.fullName
-      )
-      .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''));
-
-    if (passed.length > 0) {
-      const expiry = getExpiryDate(passed[0].completionDate);
-      if (expiry) {
-        const daysOver = Math.floor((now - expiry.getTime()) / 86400000);
-        if (daysOver >= CLEANUP_RULES.expiredActiveDays) {
-          return {
-            shouldDelete: true,
-            reason: `有効期限切れ${daysOver}日超過（基準: ${CLEANUP_RULES.expiredActiveDays}日、有効期限: ${expiry.toISOString().slice(0, 10)}）`,
-            rule: 'expired_active',
-          };
-        }
-      }
-    }
-  }
+  // Rule 2: 在籍中 + 有効期限切れ → 削除しない（管理画面での警告表示のみ）
+  // 在籍中は「再研修管理」という利用目的が継続しているため、
+  // 個人情報保護法・JIS Q 15001 の観点から削除対象としない
 
   // Rule 3: 退職済み
   if (trainee.status === 'retired') {

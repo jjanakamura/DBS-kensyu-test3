@@ -1104,11 +1104,12 @@ export default function AdminPage() {
                     <p className="text-2xl font-black text-red-600 my-1">30日</p>
                     <p className="text-xs text-red-700">経過後に自動削除</p>
                   </div>
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    <p className="text-xs font-bold text-amber-800 mb-1">ルール②　在籍中・有効期限切れ</p>
-                    <p className="text-xs text-amber-700">研修の有効期限が切れてから</p>
-                    <p className="text-2xl font-black text-amber-600 my-1">30日</p>
-                    <p className="text-xs text-amber-700">経過後に自動削除（再研修未完了）</p>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-xs font-bold text-blue-800 mb-1">ルール②　在籍中・有効期限切れ</p>
+                    <p className="text-xs text-blue-700">有効期限が切れても</p>
+                    <p className="text-lg font-black text-blue-600 my-1">削除しない</p>
+                    <p className="text-xs text-blue-700">管理画面で「要再研修」として警告表示のみ</p>
+                    <p className="text-xs text-blue-500 mt-1">※在籍中＝利用目的が継続（個人情報保護法準拠）</p>
                   </div>
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                     <p className="text-xs font-bold text-gray-700 mb-1">ルール③　退職済み</p>
