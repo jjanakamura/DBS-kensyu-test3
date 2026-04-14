@@ -16,6 +16,25 @@ function calcExpiry(completionDate) {
   return `${parseInt(m[1]) + 1}年${m[2]}月${m[3]}日`;
 }
 
+function calcRemainingDays(completionDate) {
+  const expiry = calcExpiry(completionDate);
+  if (!expiry) return null;
+  const m = expiry.match(/(\d+)年(\d+)月(\d+)日/);
+  if (!m) return null;
+  const expiryDate = new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+}
+
+function RemainingBadge({ days }) {
+  if (days === null || days === undefined) return <span className="text-gray-300">—</span>;
+  if (days < 0) return <span className="text-xs font-bold text-red-600">期限切れ</span>;
+  if (days <= 30) return <span className="text-xs font-bold text-red-600">残り{days}日</span>;
+  if (days <= 60) return <span className="text-xs font-semibold text-amber-600">残り{days}日</span>;
+  return <span className="text-xs text-gray-400">残り{days}日</span>;
+}
+
 function getBaseUrl() {
   return typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com';
 }
@@ -59,6 +78,9 @@ export default function AdminPage() {
 
   // URLコピー
   const [copiedKey, setCopiedKey] = useState('');
+
+  // 汎用確認モーダル（confirm()の代替）
+  const [confirmModal, setConfirmModal] = useState(null); // { message, onConfirm }
 
   // パスワード表示トグル
   const [showPasswords, setShowPasswords] = useState(false);
@@ -289,6 +311,52 @@ export default function AdminPage() {
     finally { setClsPwChanging(false); }
   };
 
+  // 事業者ステータス切り替え
+  const handleOpStatusToggle = (op) => {
+    const newStatus = op.status === 'active' ? 'inactive' : 'active';
+    const label = newStatus === 'active' ? '有効' : '停止';
+    setConfirmModal({
+      message: `「${op.companyName}」のステータスを「${label}」に変更しますか？`,
+      onConfirm: async () => {
+        try {
+          const res = await fetch('/api/update-operator', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ operatorCode: op.operatorCode, status: newStatus }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) { setConfirmModal({ message: data.error || '変更に失敗しました。', errorOnly: true }); return; }
+          setOperators((prev) => prev.map((o) =>
+            o.operatorCode === op.operatorCode ? { ...o, status: newStatus } : o
+          ));
+        } catch { setConfirmModal({ message: '通信エラーが発生しました。', errorOnly: true }); }
+      },
+    });
+  };
+
+  // 教室ステータス切り替え（admin用）
+  const handleAdminClsStatusToggle = (cls) => {
+    const newStatus = cls.status === 'active' ? 'inactive' : 'active';
+    const label = newStatus === 'active' ? '有効' : '停止';
+    setConfirmModal({
+      message: `「${cls.classroomName}」のステータスを「${label}」に変更しますか？`,
+      onConfirm: async () => {
+        try {
+          const res = await fetch('/api/update-classroom-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ classroomCode: cls.classroomCode, status: newStatus }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) { setConfirmModal({ message: data.error || '変更に失敗しました。', errorOnly: true }); return; }
+          setClassrooms((prev) => prev.map((c) =>
+            c.classroomCode === cls.classroomCode ? { ...c, status: newStatus } : c
+          ));
+        } catch { setConfirmModal({ message: '通信エラーが発生しました。', errorOnly: true }); }
+      },
+    });
+  };
+
   const statusLabel = (s) => {
     if (s === 'active') return '在籍中';
     if (s === 'retired') return '退職済';
@@ -329,6 +397,23 @@ export default function AdminPage() {
     );
   }
 
+  // 有効期限が30日以内に迫っている在籍中受講者（警告バナー用）
+  const expiringTrainees = trainees
+    .filter((t) => t.status === 'active')
+    .reduce((acc, t) => {
+      const latestPassed = records
+        .filter((r) => r.passed && r.fullName === t.fullName &&
+          (r.operatorCode || r.memberCode || '') === (t.operatorCode || ''))
+        .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))[0];
+      if (!latestPassed) return acc;
+      const remaining = calcRemainingDays(latestPassed.completionDate);
+      if (remaining !== null && remaining <= 30) {
+        acc.push({ ...t, remaining });
+      }
+      return acc;
+    }, [])
+    .sort((a, b) => a.remaining - b.remaining);
+
   const tabs = [
     { key: 'records', label: '受講記録', count: records.length },
     { key: 'operators', label: '事業者一覧', count: operators.length },
@@ -365,6 +450,29 @@ export default function AdminPage() {
             </div>
           ))}
         </div>
+
+        {/* 有効期限間近の警告バナー */}
+        {expiringTrainees.length > 0 && (
+          <div className="mb-5 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 flex items-start gap-3">
+            <span className="text-lg mt-0.5 flex-shrink-0">⚠️</span>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-amber-800 mb-1">研修の有効期間が残り1か月を切った受講者がいます</p>
+              <p className="text-xs text-amber-700 mb-2">
+                以下の方々の研修有効期間が残り30日以内です。在籍中の場合は再研修の手続きを、退職済みの場合はステータス変更をご検討ください。
+              </p>
+              <ul className="space-y-1">
+                {expiringTrainees.map((item, i) => (
+                  <li key={i} className="flex items-center gap-2 text-xs">
+                    <span className={`font-bold px-2 py-0.5 rounded whitespace-nowrap ${item.remaining < 0 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
+                      {item.remaining < 0 ? '期限切れ' : `残り${item.remaining}日`}
+                    </span>
+                    <span className="text-amber-900 font-medium">{item.companyName}　{item.classroomName}　{item.fullName}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
 
         {/* タブ */}
         <div className="flex gap-1 mb-6 border-b border-green-200">
@@ -458,7 +566,14 @@ export default function AdminPage() {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{r.completionDate || '—'}</td>
-                          <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{calcExpiry(r.completionDate) || '—'}</td>
+                          <td className="px-4 py-3 text-xs whitespace-nowrap">
+                            {r.passed && r.completionDate ? (
+                              <div>
+                                <div className="text-gray-600">{calcExpiry(r.completionDate) || '—'}</div>
+                                <RemainingBadge days={calcRemainingDays(r.completionDate)} />
+                              </div>
+                            ) : <span className="text-gray-300">—</span>}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -585,9 +700,12 @@ export default function AdminPage() {
                           <td className="px-4 py-3 text-center text-xs font-semibold text-green-700">{op.passedCount ?? 0}</td>
                           <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{op.registeredAt || '—'}</td>
                           <td className="px-4 py-3 text-center">
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${op.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'}`}>
+                            <button
+                              onClick={() => handleOpStatusToggle(op)}
+                              title="クリックでステータス変更"
+                              className={`text-xs font-bold px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${op.status === 'active' ? 'bg-green-100 text-green-800 border-green-300 hover:bg-red-100 hover:text-red-700 hover:border-red-300' : 'bg-gray-200 text-gray-600 border-gray-300 hover:bg-green-100 hover:text-green-800 hover:border-green-300'}`}>
                               {op.status === 'active' ? '有効' : '停止'}
-                            </span>
+                            </button>
                           </td>
                           <td className="px-4 py-3 text-center">
                             {op.status === 'active' && (
@@ -614,17 +732,9 @@ export default function AdminPage() {
                 {filteredOperators.length} 件表示（全 {operators.length} 社）
               </div>
             </div>
-            <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-800 space-y-2">
-              <p className="font-semibold">⚠️ 事業者追加・編集について</p>
-              <p>現在は <code className="bg-amber-100 px-1 rounded">data/operators.json</code> を直接編集してください。停止は <code className="bg-amber-100 px-1 rounded">"status": "inactive"</code> に変更します。</p>
-              <p className="font-semibold mt-2">🏢 新規事業者追加時の手順</p>
-              <ol className="list-decimal list-inside space-y-1 text-amber-700">
-                <li><code className="bg-amber-100 px-1 rounded">operators.json</code> に事業者を1行追加（operatorCode・adminPassword等）</li>
-                <li><code className="bg-amber-100 px-1 rounded">classrooms.json</code> に本部エントリを追加：<br />
-                  <code className="bg-amber-100 px-1 rounded text-xs block mt-1 p-1">{"{"}"classroomCode": "A006-HQ", "operatorCode": "A006", "classroomName": "本部", "isHQ": true, "status": "active", "createdAt": "YYYY-MM-DD"{"}"}</code>
-                </li>
-                <li>事業者に <code className="bg-amber-100 px-1 rounded">/operator/login</code> のURLとログイン情報を送付</li>
-              </ol>
+            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-xs text-blue-800">
+              <p className="font-semibold mb-1">ℹ️ ステータス変更について</p>
+              <p>各行の「有効」「停止」ボタンをクリックするとステータスを切り替えられます。停止にすると事業者はログインできなくなります。</p>
             </div>
           </>
         )}
@@ -684,9 +794,12 @@ export default function AdminPage() {
                           <td className="px-4 py-3 text-center text-xs font-semibold text-green-700">{cls.passedTrainees ?? 0}</td>
                           <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{cls.createdAt || '—'}</td>
                           <td className="px-4 py-3 text-center">
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${cls.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-500'}`}>
+                            <button
+                              onClick={() => handleAdminClsStatusToggle(cls)}
+                              title="クリックでステータス変更"
+                              className={`text-xs font-bold px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${cls.status === 'active' ? 'bg-green-100 text-green-800 border-green-300 hover:bg-red-100 hover:text-red-700 hover:border-red-300' : 'bg-gray-200 text-gray-500 border-gray-300 hover:bg-green-100 hover:text-green-800 hover:border-green-300'}`}>
                               {cls.status === 'active' ? '有効' : '停止'}
-                            </span>
+                            </button>
                           </td>
                           <td className="px-4 py-3 text-center">
                             {cls.status === 'active' && (
@@ -783,11 +896,19 @@ export default function AdminPage() {
                         <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">登録日</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">退職日</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">メモ</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">有効期限</th>
                         <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">操作</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-green-50">
-                      {filteredTrainees.map((t, idx) => (
+                      {filteredTrainees.map((t, idx) => {
+                        const latestPassed = records
+                          .filter((r) => r.passed && r.fullName === t.fullName &&
+                            (r.operatorCode || r.memberCode || '') === (t.operatorCode || ''))
+                          .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))[0];
+                        const expiryDate = latestPassed ? calcExpiry(latestPassed.completionDate) : null;
+                        const remainingDays = latestPassed ? calcRemainingDays(latestPassed.completionDate) : null;
+                        return (
                         <tr key={idx} className={`transition-colors ${t.status === 'retired' ? 'opacity-60 bg-gray-50' : 'hover:bg-green-50'}`}>
                           <td className="px-4 py-3 text-xs font-medium text-gray-900 whitespace-nowrap">{t.fullName || '—'}</td>
                           <td className="px-4 py-3 font-mono text-xs text-gray-700">{t.operatorCode || '—'}</td>
@@ -809,6 +930,14 @@ export default function AdminPage() {
                             {t.retiredAt ? new Date(t.retiredAt).toLocaleDateString('ja-JP') : '—'}
                           </td>
                           <td className="px-4 py-3 text-xs text-gray-500 max-w-32 truncate" title={t.notes}>{t.notes || '—'}</td>
+                          <td className="px-4 py-3 text-xs whitespace-nowrap">
+                            {expiryDate ? (
+                              <div>
+                                <div className="text-gray-600">{expiryDate}</div>
+                                <RemainingBadge days={remainingDays} />
+                              </div>
+                            ) : <span className="text-gray-300">—</span>}
+                          </td>
                           <td className="px-4 py-3 text-center">
                             <button onClick={() => openStatusModal(t)}
                               className="text-xs px-2.5 py-1 bg-white border border-green-400 text-green-700 hover:bg-green-50 rounded transition-colors whitespace-nowrap">
@@ -816,7 +945,8 @@ export default function AdminPage() {
                             </button>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -947,6 +1077,48 @@ export default function AdminPage() {
                 className="px-4 py-2 text-sm font-semibold text-white bg-green-800 hover:bg-green-700 disabled:opacity-50 rounded-lg transition-colors">
                 {statusUpdating ? '更新中...' : '変更を保存'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ===== 汎用確認モーダル ===== */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-gray-200">
+            <div className="flex flex-col items-center text-center mb-5">
+              {confirmModal.errorOnly ? (
+                <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-3">
+                  <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+              ) : (
+                <div className="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center mb-3">
+                  <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  </svg>
+                </div>
+              )}
+              <p className="text-sm text-gray-800 font-medium">{confirmModal.message}</p>
+            </div>
+            <div className="flex gap-2 justify-center">
+              {confirmModal.errorOnly ? (
+                <button onClick={() => setConfirmModal(null)}
+                  className="px-6 py-2 text-sm font-semibold text-white bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+                  閉じる
+                </button>
+              ) : (
+                <>
+                  <button onClick={() => setConfirmModal(null)}
+                    className="flex-1 px-4 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium">
+                    キャンセル
+                  </button>
+                  <button onClick={() => { const fn = confirmModal.onConfirm; setConfirmModal(null); fn(); }}
+                    className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-green-700 hover:bg-green-800 rounded-lg transition-colors">
+                    変更する
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

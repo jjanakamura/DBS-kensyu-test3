@@ -35,11 +35,11 @@ export default function handler(req, res) {
     }
 
     const newRecord = {
+      ...record,
       id: `REC-${Date.now()}-${String(records.length + 1).padStart(4, '0')}`,
       // operatorCode を正規フィールドとして保存（旧 memberCode との後方互換を維持）
       operatorCode: record.operatorCode || record.memberCode || '',
       classroomCode: record.classroomCode || '',
-      ...record,
     };
 
     records.push(newRecord);

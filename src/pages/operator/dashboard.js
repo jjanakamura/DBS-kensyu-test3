@@ -6,6 +6,32 @@ import Layout from '../../components/Layout';
  * 事業者管理ダッシュボード
  * /operator/dashboard
  */
+
+function calcExpiry(completionDate) {
+  if (!completionDate) return null;
+  const m = completionDate.match(/(\d+)年(\d+)月(\d+)日/);
+  if (!m) return null;
+  return `${parseInt(m[1]) + 1}年${m[2]}月${m[3]}日`;
+}
+
+function calcRemainingDays(completionDate) {
+  const expiry = calcExpiry(completionDate);
+  if (!expiry) return null;
+  const m = expiry.match(/(\d+)年(\d+)月(\d+)日/);
+  if (!m) return null;
+  const expiryDate = new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+}
+
+function RemainingBadge({ days }) {
+  if (days === null || days === undefined) return <span className="text-gray-300">—</span>;
+  if (days < 0) return <span className="text-xs font-bold text-red-600">期限切れ</span>;
+  if (days <= 30) return <span className="text-xs font-bold text-red-600">残り{days}日</span>;
+  if (days <= 60) return <span className="text-xs font-semibold text-amber-600">残り{days}日</span>;
+  return <span className="text-xs text-gray-400">残り{days}日</span>;
+}
 export default function OperatorDashboard() {
   const router = useRouter();
   const [auth, setAuth] = useState(null);
@@ -32,11 +58,14 @@ export default function OperatorDashboard() {
   const [clsPwChanging, setClsPwChanging] = useState(false);
   const [clsPwError, setClsPwError]   = useState('');
 
-  // ステータス変更モーダル
+  // ステータス変更モーダル（受講者用）
   const [statusModal, setStatusModal] = useState(null);
   const [modalStatus, setModalStatus] = useState('active');
   const [modalNotes, setModalNotes] = useState('');
   const [statusUpdating, setStatusUpdating] = useState(false);
+
+  // 汎用確認モーダル（confirm()の代替）
+  const [confirmModal, setConfirmModal] = useState(null); // { message, onConfirm } | { message, errorOnly: true }
 
   useEffect(() => {
     const stored = sessionStorage.getItem('operatorAuth');
@@ -77,6 +106,29 @@ export default function OperatorDashboard() {
   const handleLogout = () => {
     sessionStorage.removeItem('operatorAuth');
     router.push('/operator/login');
+  };
+
+  // 教室ステータス切り替え
+  const handleClsStatusToggle = (cls) => {
+    const newStatus = cls.status === 'active' ? 'inactive' : 'active';
+    const label = newStatus === 'active' ? '有効' : '停止';
+    setConfirmModal({
+      message: `「${cls.classroomName}」のステータスを「${label}」に変更しますか？`,
+      onConfirm: async () => {
+        try {
+          const res = await fetch('/api/update-classroom-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ classroomCode: cls.classroomCode, status: newStatus }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) { setConfirmModal({ message: data.error || '変更に失敗しました。', errorOnly: true }); return; }
+          setClassrooms((prev) => prev.map((c) =>
+            c.classroomCode === cls.classroomCode ? { ...c, status: newStatus } : c
+          ));
+        } catch { setConfirmModal({ message: '通信エラーが発生しました。', errorOnly: true }); }
+      },
+    });
   };
 
   // 教室パスワード変更
@@ -230,6 +282,23 @@ export default function OperatorDashboard() {
   if (!auth) return null;
 
   const passedCount = records.filter((r) => r.passed).length;
+
+  // 有効期限が30日以内に迫っている在籍中受講者（警告バナー用）
+  const expiringTrainees = trainees
+    .filter((t) => t.status === 'active')
+    .reduce((acc, t) => {
+      const latestPassed = records
+        .filter((r) => r.passed && r.fullName === t.fullName)
+        .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))[0];
+      if (!latestPassed) return acc;
+      const remaining = calcRemainingDays(latestPassed.completionDate);
+      if (remaining !== null && remaining <= 30) {
+        acc.push({ ...t, remaining });
+      }
+      return acc;
+    }, [])
+    .sort((a, b) => a.remaining - b.remaining);
+
   const hqClassroom = classrooms.find((c) => c.isHQ);
   const hqUrl = hqClassroom
     ? `${getBaseUrl()}/register?biz=${auth.operatorCode}&cls=${hqClassroom.classroomCode}`
@@ -272,6 +341,29 @@ export default function OperatorDashboard() {
             <p className="text-2xl font-bold text-gray-900">{records.length}</p>
           </div>
         </div>
+
+        {/* 有効期限間近の警告バナー */}
+        {expiringTrainees.length > 0 && (
+          <div className="mb-5 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 flex items-start gap-3">
+            <span className="text-lg mt-0.5 flex-shrink-0">⚠️</span>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-amber-800 mb-1">研修の有効期間が残り1か月を切った受講者がいます</p>
+              <p className="text-xs text-amber-700 mb-2">
+                以下の方々の研修有効期間が残り30日以内です。在籍中の場合は再研修の手続きを、退職済みの場合はステータス変更をご検討ください。
+              </p>
+              <ul className="space-y-1">
+                {expiringTrainees.map((item, i) => (
+                  <li key={i} className="flex items-center gap-2 text-xs">
+                    <span className={`font-bold px-2 py-0.5 rounded whitespace-nowrap ${item.remaining < 0 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
+                      {item.remaining < 0 ? '期限切れ' : `残り${item.remaining}日`}
+                    </span>
+                    <span className="text-amber-900 font-medium">{item.classroomName}　{item.fullName}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
 
         {/* 本部スタッフ向けURL + 情報管理責任者URL */}
         <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2">
@@ -410,9 +502,12 @@ export default function OperatorDashboard() {
                           <td className="px-4 py-3 text-center text-xs text-gray-600">{cls.totalTrainees ?? 0}</td>
                           <td className="px-4 py-3 text-center text-xs font-semibold text-green-700">{cls.passedTrainees ?? 0}</td>
                           <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${cls.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-500'}`}>
+                            <button
+                              onClick={() => handleClsStatusToggle(cls)}
+                              title="クリックでステータス変更"
+                              className={`text-xs font-bold px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${cls.status === 'active' ? 'bg-green-100 text-green-800 border-green-300 hover:bg-red-100 hover:text-red-700 hover:border-red-300' : 'bg-gray-200 text-gray-500 border-gray-300 hover:bg-green-100 hover:text-green-800 hover:border-green-300'}`}>
                               {cls.status === 'active' ? '有効' : '停止'}
-                            </span>
+                            </button>
                           </td>
                           <td className="px-4 py-3 text-xs font-mono" onClick={(e) => e.stopPropagation()}>
                             {showClsPw
@@ -546,6 +641,7 @@ export default function OperatorDashboard() {
                         <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">研修種別</th>
                         <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">合否</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">修了日</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">有効期限</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-green-50">
@@ -570,6 +666,14 @@ export default function OperatorDashboard() {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{r.completionDate || '—'}</td>
+                          <td className="px-4 py-3 text-xs whitespace-nowrap">
+                            {r.passed && r.completionDate ? (
+                              <div>
+                                <div className="text-gray-600">{calcExpiry(r.completionDate) || '—'}</div>
+                                <RemainingBadge days={calcRemainingDays(r.completionDate)} />
+                              </div>
+                            ) : <span className="text-gray-300">—</span>}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -620,11 +724,18 @@ export default function OperatorDashboard() {
                         <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">登録日</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">退職日</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">メモ</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">有効期限</th>
                         <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">操作</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-green-50">
-                      {filteredTrainees.map((t, idx) => (
+                      {filteredTrainees.map((t, idx) => {
+                        const latestPassed = records
+                          .filter((r) => r.passed && r.fullName === t.fullName)
+                          .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))[0];
+                        const expiryDate = latestPassed ? calcExpiry(latestPassed.completionDate) : null;
+                        const remainingDays = latestPassed ? calcRemainingDays(latestPassed.completionDate) : null;
+                        return (
                         <tr key={idx} className={`transition-colors ${t.status === 'retired' ? 'opacity-60 bg-gray-50' : 'hover:bg-green-50'}`}>
                           <td className="px-4 py-3 text-xs font-medium text-gray-900 whitespace-nowrap">{t.fullName || '—'}</td>
                           <td className="px-4 py-3 text-xs text-gray-700 whitespace-nowrap">{t.classroomName || '—'}</td>
@@ -644,6 +755,14 @@ export default function OperatorDashboard() {
                             {t.retiredAt ? new Date(t.retiredAt).toLocaleDateString('ja-JP') : '—'}
                           </td>
                           <td className="px-4 py-3 text-xs text-gray-500 max-w-28 truncate" title={t.notes}>{t.notes || '—'}</td>
+                          <td className="px-4 py-3 text-xs whitespace-nowrap">
+                            {expiryDate ? (
+                              <div>
+                                <div className="text-gray-600">{expiryDate}</div>
+                                <RemainingBadge days={remainingDays} />
+                              </div>
+                            ) : <span className="text-gray-300">—</span>}
+                          </td>
                           <td className="px-4 py-3 text-center">
                             <button onClick={() => openStatusModal(t)}
                               className="text-xs px-2.5 py-1 bg-white border border-green-400 text-green-700 hover:bg-green-50 rounded transition-colors whitespace-nowrap">
@@ -651,7 +770,8 @@ export default function OperatorDashboard() {
                             </button>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -759,6 +879,48 @@ export default function OperatorDashboard() {
         </div>
       )}
 
+      {/* ===== 汎用確認モーダル ===== */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-gray-200">
+            <div className="flex flex-col items-center text-center mb-5">
+              {confirmModal.errorOnly ? (
+                <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-3">
+                  <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+              ) : (
+                <div className="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center mb-3">
+                  <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  </svg>
+                </div>
+              )}
+              <p className="text-sm text-gray-800 font-medium">{confirmModal.message}</p>
+            </div>
+            <div className="flex gap-2 justify-center">
+              {confirmModal.errorOnly ? (
+                <button onClick={() => setConfirmModal(null)}
+                  className="px-6 py-2 text-sm font-semibold text-white bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+                  閉じる
+                </button>
+              ) : (
+                <>
+                  <button onClick={() => setConfirmModal(null)}
+                    className="flex-1 px-4 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium">
+                    キャンセル
+                  </button>
+                  <button onClick={() => { const fn = confirmModal.onConfirm; setConfirmModal(null); fn(); }}
+                    className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-green-700 hover:bg-green-800 rounded-lg transition-colors">
+                    変更する
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

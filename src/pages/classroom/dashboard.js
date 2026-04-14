@@ -18,6 +18,25 @@ function calcExpiry(completionDate) {
   return `${parseInt(m[1]) + 1}年${m[2]}月${m[3]}日`;
 }
 
+function calcRemainingDays(completionDate) {
+  const expiry = calcExpiry(completionDate);
+  if (!expiry) return null;
+  const m = expiry.match(/(\d+)年(\d+)月(\d+)日/);
+  if (!m) return null;
+  const expiryDate = new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+}
+
+function RemainingBadge({ days }) {
+  if (days === null || days === undefined) return <span className="text-gray-300">—</span>;
+  if (days < 0) return <span className="text-xs font-bold text-red-600">期限切れ</span>;
+  if (days <= 30) return <span className="text-xs font-bold text-red-600">残り{days}日</span>;
+  if (days <= 60) return <span className="text-xs font-semibold text-amber-600">残り{days}日</span>;
+  return <span className="text-xs text-gray-400">残り{days}日</span>;
+}
+
 const STATUS_LABEL = { active: '在籍中', suspended: '停止中', retired: '退職済' };
 const STATUS_COLOR = {
   active:    'bg-green-100 text-green-800 border border-green-300',
@@ -50,6 +69,12 @@ export default function ClassroomDashboard() {
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusError, setStatusError] = useState('');
   const modalRef = useRef(null);
+
+  // 削除確認モーダル
+  const [deleteModal, setDeleteModal] = useState(null); // { id, fullName }
+  const [deleteUpdating, setDeleteUpdating] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const deleteModalRef = useRef(null);
 
   // ── 認証チェック ──────────────────────────────────────────────
   useEffect(() => {
@@ -107,6 +132,18 @@ export default function ClassroomDashboard() {
     return () => document.removeEventListener('mousedown', handler);
   }, [statusModal]);
 
+  useEffect(() => {
+    if (!deleteModal) return;
+    const handler = (e) => {
+      if (deleteModalRef.current && !deleteModalRef.current.contains(e.target)) {
+        setDeleteModal(null);
+        setDeleteError('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [deleteModal]);
+
   const openStatusModal = (trainee) => {
     setStatusModal({
       id:            trainee.id,
@@ -155,6 +192,31 @@ export default function ClassroomDashboard() {
     }
   };
 
+  // ── 受講者削除 ────────────────────────────────────────────────
+  const handleDeleteTrainee = async () => {
+    if (!deleteModal) return;
+    setDeleteUpdating(true);
+    setDeleteError('');
+    try {
+      const res = await fetch('/api/delete-trainee', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ id: deleteModal.id }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setDeleteError(json.error || '削除に失敗しました。');
+        return;
+      }
+      setTrainees((prev) => prev.filter((t) => t.id !== deleteModal.id));
+      setDeleteModal(null);
+    } catch {
+      setDeleteError('通信エラーが発生しました。再度お試しください。');
+    } finally {
+      setDeleteUpdating(false);
+    }
+  };
+
   // ── ログアウト ─────────────────────────────────────────────────
   const handleLogout = () => {
     sessionStorage.removeItem('classroomAuth');
@@ -167,6 +229,22 @@ export default function ClassroomDashboard() {
     records.length > 0
       ? Math.round((passedRecords.length / records.length) * 100)
       : 0;
+
+  // 有効期限が30日以内に迫っている在籍中受講者（警告バナー用）
+  const expiringTrainees = trainees
+    .filter((t) => t.status === 'active')
+    .reduce((acc, t) => {
+      const latestPassed = records
+        .filter((r) => r.passed && r.fullName === t.fullName)
+        .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))[0];
+      if (!latestPassed) return acc;
+      const remaining = calcRemainingDays(latestPassed.completionDate);
+      if (remaining !== null && remaining <= 30) {
+        acc.push({ ...t, remaining });
+      }
+      return acc;
+    }, [])
+    .sort((a, b) => a.remaining - b.remaining);
 
   // 最終受講日（受講者ごとに records から引く）
   const lastStudyDate = (trainee) => {
@@ -292,6 +370,29 @@ export default function ClassroomDashboard() {
         </div>
       )}
 
+      {/* ── 有効期限間近の警告バナー ── */}
+      {expiringTrainees.length > 0 && (
+        <div className="mb-5 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 flex items-start gap-3">
+          <span className="text-lg mt-0.5 flex-shrink-0">⚠️</span>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-amber-800 mb-1">研修の有効期間が残り1か月を切った受講者がいます</p>
+            <p className="text-xs text-amber-700 mb-2">
+              以下の方々の研修有効期間が残り30日以内です。在籍中の場合は再研修の手続きを、退職済みの場合はステータス変更をご検討ください。
+            </p>
+            <ul className="space-y-1">
+              {expiringTrainees.map((item, i) => (
+                <li key={i} className="flex items-center gap-2 text-xs">
+                  <span className={`font-bold px-2 py-0.5 rounded whitespace-nowrap ${item.remaining < 0 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
+                    {item.remaining < 0 ? '期限切れ' : `残り${item.remaining}日`}
+                  </span>
+                  <span className="text-amber-900 font-medium">{item.fullName}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
       {/* ── タブ切替 ── */}
       <div className="flex border-b border-green-200 mb-6 gap-1">
         {[
@@ -404,8 +505,13 @@ export default function ClassroomDashboard() {
                         <td className="px-3 py-2.5 whitespace-nowrap text-gray-700 text-xs">
                           {passed ? (r.completionDate || '—') : '—'}
                         </td>
-                        <td className="px-3 py-2.5 whitespace-nowrap text-gray-700 text-xs">
-                          {passed ? (calcExpiry(r.completionDate) || '—') : '—'}
+                        <td className="px-3 py-2.5 whitespace-nowrap text-xs">
+                          {passed && r.completionDate ? (
+                            <div>
+                              <div className="text-gray-700">{calcExpiry(r.completionDate) || '—'}</div>
+                              <RemainingBadge days={calcRemainingDays(r.completionDate)} />
+                            </div>
+                          ) : <span className="text-gray-300">—</span>}
                         </td>
                         <td className="px-3 py-2.5 font-mono text-xs text-gray-600 whitespace-nowrap">
                           {passed ? (r.certNumber || r.completionNumber || '—') : '—'}
@@ -450,7 +556,7 @@ export default function ClassroomDashboard() {
               <table className="min-w-full text-sm bg-white">
                 <thead>
                   <tr className="bg-green-700 text-white">
-                    {['氏名', '研修種別', 'ステータス', '最終受講日', '操作'].map((h) => (
+                    {['氏名', '研修種別', 'ステータス', '最終受講日', '有効期限', '操作'].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold whitespace-nowrap">
                         {h}
                       </th>
@@ -479,13 +585,38 @@ export default function ClassroomDashboard() {
                         <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
                           {lastStudyDate(t)}
                         </td>
+                        <td className="px-4 py-3 text-xs whitespace-nowrap">
+                          {(() => {
+                            const lp = records
+                              .filter((r) => r.passed && r.fullName === t.fullName)
+                              .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))[0];
+                            const exp = lp ? calcExpiry(lp.completionDate) : null;
+                            const rem = lp ? calcRemainingDays(lp.completionDate) : null;
+                            return exp ? (
+                              <div>
+                                <div className="text-gray-600">{exp}</div>
+                                <RemainingBadge days={rem} />
+                              </div>
+                            ) : <span className="text-gray-300">—</span>;
+                          })()}
+                        </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <button
-                            onClick={() => openStatusModal(t)}
-                            className="text-xs bg-white border border-green-300 text-green-700 hover:bg-green-50 active:bg-green-100 transition-colors px-3 py-1.5 rounded-lg font-medium shadow-sm"
-                          >
-                            ステータス変更
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => openStatusModal(t)}
+                              className="text-xs bg-white border border-green-300 text-green-700 hover:bg-green-50 active:bg-green-100 transition-colors px-3 py-1.5 rounded-lg font-medium shadow-sm"
+                            >
+                              ステータス変更
+                            </button>
+                            {statusKey === 'suspended' && (
+                              <button
+                                onClick={() => { setDeleteModal({ id: t.id, fullName: t.fullName || '（氏名なし）' }); setDeleteError(''); }}
+                                className="text-xs bg-white border border-red-300 text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors px-3 py-1.5 rounded-lg font-medium shadow-sm"
+                              >
+                                🗑 削除
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -638,6 +769,85 @@ export default function ClassroomDashboard() {
           </div>
         </div>
       )}
+      {/* ════ 削除確認モーダル ════ */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div
+            ref={deleteModalRef}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-red-100"
+          >
+            {/* ヘッダー */}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold text-red-700">受講者の削除</h2>
+              <button
+                onClick={() => { setDeleteModal(null); setDeleteError(''); }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="閉じる"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* 警告アイコン＋対象者名 */}
+            <div className="flex flex-col items-center text-center mb-5">
+              <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mb-3 border-2 border-red-200">
+                <svg className="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <p className="text-sm text-gray-700">
+                <span className="font-bold text-gray-900">{deleteModal.fullName}</span> さんを削除します。
+              </p>
+              <p className="text-xs text-gray-500 mt-1">この操作は取り消せません。</p>
+            </div>
+
+            {/* 注意書き */}
+            <div className="mb-5 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-800">
+              <p className="font-semibold mb-1">⚠️ 削除前のご確認</p>
+              <ul className="list-disc list-inside space-y-0.5 text-amber-700">
+                <li>受講者情報が完全に削除されます</li>
+                <li>受講記録は引き続き保持されます</li>
+                <li>削除後に元に戻すことはできません</li>
+              </ul>
+            </div>
+
+            {/* エラー */}
+            {deleteError && (
+              <p className="mb-4 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                {deleteError}
+              </p>
+            )}
+
+            {/* ボタン */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setDeleteModal(null); setDeleteError(''); }}
+                disabled={deleteUpdating}
+                className="flex-1 px-4 py-2.5 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleDeleteTrainee}
+                disabled={deleteUpdating}
+                className="flex-1 px-4 py-2.5 text-sm text-white bg-red-600 hover:bg-red-700 active:bg-red-800 transition-colors rounded-lg font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+              >
+                {deleteUpdating && (
+                  <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                )}
+                {deleteUpdating ? '削除中…' : '削除する'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ════ 受講画面QRコードモーダル ════ */}
       {showQr && auth && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"

@@ -38,7 +38,7 @@ export default function handler(req, res) {
 
     const enriched = safe.map((op) => {
       const opClassrooms = classrooms.filter((c) => c.operatorCode === op.operatorCode);
-      const opRecords = records.filter((r) => r.operatorCode === op.operatorCode);
+      const opRecords = records.filter((r) => (r.operatorCode || r.memberCode || '') === op.operatorCode);
       return {
         ...op,
         classroomCount: opClassrooms.length,

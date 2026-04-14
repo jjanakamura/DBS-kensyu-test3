@@ -2,6 +2,8 @@
   {
     "id": "REC-1776010317066-0001",
     "memberCode": "A001",
+    "operatorCode": "A001",
+    "classroomCode": "A001-C01",
     "companyName": "株式会社中村",
     "classroomName": "渋谷校",
     "fullName": "山田 太郎",
@@ -54,6 +56,8 @@
   {
     "id": "REC-1776017098838-0002",
     "memberCode": "A001",
+    "operatorCode": "A001",
+    "classroomCode": "A001-C01",
     "companyName": "株式会社中村",
     "classroomName": "渋谷校",
     "fullName": "山田 太郎",
