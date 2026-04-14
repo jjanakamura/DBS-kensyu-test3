@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
+import dynamic from 'next/dynamic';
+const QRCodeCanvas = dynamic(() => import('qrcode.react').then(m => m.QRCodeCanvas), { ssr: false });
 
 /**
  * 事業者管理ダッシュボード
@@ -89,6 +91,14 @@ export default function OperatorDashboard() {
       }
     } catch (e) { console.error(e); }
     finally { setClsChanging(false); }
+  };
+
+  // QRコードモーダル（再研修URL用）
+  const [qrModal, setQrModal] = useState(null); // { url, title }
+  const getRetrainUrl = (operatorCode, classroomCode, track) => {
+    const base = typeof window !== 'undefined' ? window.location.origin : '';
+    const trackParam = track === 'manager' ? '&track=manager' : '';
+    return `${base}/register?biz=${operatorCode}&cls=${classroomCode}${trackParam}`;
   };
 
   // 再研修URLコピー
@@ -293,14 +303,17 @@ export default function OperatorDashboard() {
       filtered = records.filter((r) => r.classroomCode === filter);
       label = filter;
     }
+    const base = typeof window !== 'undefined' ? window.location.origin : '';
     const header = [
       '受講日時', '教室コード', '教室名', '氏名',
-      '研修種別', '得点', '合否', '修了日', '修了番号', '在籍ステータス',
+      '研修種別', '得点', '合否', '修了日', '修了番号', '在籍ステータス', '再研修URL',
     ];
     const rows = filtered.map((r) => {
       const trainee = trainees.find(
         (t) => t.fullName === r.fullName && t.operatorCode === (r.operatorCode || r.memberCode)
       );
+      const trackParam = r.track === 'manager' ? '&track=manager' : '';
+      const retrainUrl = `${base}/register?biz=${r.operatorCode || r.memberCode || ''}&cls=${r.classroomCode || ''}${trackParam}`;
       return [
         r.submittedAt ? new Date(r.submittedAt).toLocaleString('ja-JP') : '',
         r.classroomCode || '',
@@ -312,10 +325,37 @@ export default function OperatorDashboard() {
         r.completionDate || '',
         r.certNumber || '',
         trainee ? (statusMap[trainee.status] || trainee.status) : '—',
+        retrainUrl,
       ];
     });
     const date = new Date().toISOString().slice(0, 10);
     downloadCsv(`受講記録_${auth.operatorCode}_${label}_${date}.csv`, [header, ...rows]);
+  };
+
+  const exportTraineesCsv = () => {
+    const base = typeof window !== 'undefined' ? window.location.origin : '';
+    const header = ['氏名', '教室名', '研修種別', 'ステータス', '有効期限', '残り日数', '再研修URL'];
+    const statusMap = { active: '在籍中', retired: '退職済', suspended: '停止中' };
+    const rows = trainees.map((t) => {
+      const latestPassed = records
+        .filter((r) => r.passed && r.fullName === t.fullName)
+        .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))[0];
+      const expiry = latestPassed ? calcExpiry(latestPassed.completionDate) : '';
+      const remaining = latestPassed ? calcRemainingDays(latestPassed.completionDate) : '';
+      const trackParam = t.track === 'manager' ? '&track=manager' : '';
+      const retrainUrl = `${base}/register?biz=${t.operatorCode}&cls=${t.classroomCode}${trackParam}`;
+      return [
+        t.fullName || '',
+        t.classroomName || '',
+        t.track === 'manager' ? '情報管理責任者研修' : '一般研修',
+        statusMap[t.status] || t.status || '',
+        expiry || '',
+        remaining !== '' && remaining !== null ? `${remaining}日` : '',
+        retrainUrl,
+      ];
+    });
+    const date = new Date().toISOString().slice(0, 10);
+    downloadCsv(`受講者一覧_${auth.operatorCode}_${date}.csv`, [header, ...rows]);
   };
 
   if (!auth) return null;
@@ -715,16 +755,24 @@ export default function OperatorDashboard() {
                             ) : <span className="text-gray-300">—</span>}
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <button
-                              onClick={() => copyRetrainUrl(r.id, r.operatorCode || r.memberCode, r.classroomCode, r.track)}
-                              className={`text-xs px-2 py-1 rounded border transition-colors whitespace-nowrap ${
-                                copiedTraineeId === r.id
-                                  ? 'bg-green-700 text-white border-green-700'
-                                  : 'bg-white border-blue-300 text-blue-600 hover:bg-blue-50'
-                              }`}
-                            >
-                              {copiedTraineeId === r.id ? '✓ コピー済' : '🔗 再研修URL'}
-                            </button>
+                            <div className="flex items-center gap-1 justify-center">
+                              <button
+                                onClick={() => copyRetrainUrl(r.id, r.operatorCode || r.memberCode, r.classroomCode, r.track)}
+                                className={`text-xs px-2 py-1 rounded border transition-colors whitespace-nowrap ${
+                                  copiedTraineeId === r.id
+                                    ? 'bg-green-700 text-white border-green-700'
+                                    : 'bg-white border-blue-300 text-blue-600 hover:bg-blue-50'
+                                }`}
+                              >
+                                {copiedTraineeId === r.id ? '✓ コピー済' : '🔗 再研修URL'}
+                              </button>
+                              <button
+                                onClick={() => setQrModal({ url: getRetrainUrl(r.operatorCode || r.memberCode, r.classroomCode, r.track), title: `${r.fullName || ''}の再研修QR` })}
+                                className="text-xs px-2 py-1 rounded border bg-white border-purple-300 text-purple-600 hover:bg-purple-50 transition-colors whitespace-nowrap"
+                              >
+                                📱 QR
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -759,6 +807,16 @@ export default function OperatorDashboard() {
               </label>
             </div>
 
+            {trainees.length > 0 && (
+              <div className="flex justify-end mb-3">
+                <button
+                  onClick={exportTraineesCsv}
+                  className="flex items-center gap-1.5 text-xs px-3 py-2 bg-white border border-green-400 text-green-700 hover:bg-green-50 rounded-lg transition-colors font-medium"
+                >
+                  📥 受講者一覧CSV（再研修URL付き）
+                </button>
+              </div>
+            )}
             {filteredTrainees.length === 0 ? (
               <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-xl border border-green-200">
                 {trainees.length === 0 ? '受講者データがありません。' : '条件に一致する受講者がいません。'}
@@ -837,6 +895,12 @@ export default function OperatorDashboard() {
                               >
                                 {copiedTraineeId === t.id ? '✓ コピー済' : '🔗 再研修URL'}
                               </button>
+                              <button
+                                onClick={() => setQrModal({ url: getRetrainUrl(t.operatorCode, t.classroomCode, t.track), title: `${t.fullName || ''}の再研修QR` })}
+                                className="text-xs px-2 py-1 rounded border bg-white border-purple-300 text-purple-600 hover:bg-purple-50 transition-colors whitespace-nowrap"
+                              >
+                                📱 QR
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -858,6 +922,21 @@ export default function OperatorDashboard() {
           <CertificatesTab records={records.filter((r) => r.passed)} />
         )}
       </div>
+
+      {/* ===== QRコードモーダル ===== */}
+      {qrModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setQrModal(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xs text-center" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm font-bold text-gray-800 mb-1">📱 再研修QRコード</p>
+            <p className="text-xs font-medium text-gray-600 mb-3">{qrModal.title}</p>
+            <div className="flex justify-center mb-4 p-3 bg-gray-50 rounded-xl">
+              <QRCodeCanvas value={qrModal.url} size={200} />
+            </div>
+            <p className="text-xs text-gray-400 break-all mb-4 bg-gray-50 rounded-lg px-3 py-2 text-left">{qrModal.url}</p>
+            <button onClick={() => setQrModal(null)} className="w-full bg-green-700 hover:bg-green-600 text-white text-sm font-semibold py-2 rounded-xl transition-colors">閉じる</button>
+          </div>
+        </div>
+      )}
 
       {/* ===== ステータス変更モーダル ===== */}
       {statusModal && (

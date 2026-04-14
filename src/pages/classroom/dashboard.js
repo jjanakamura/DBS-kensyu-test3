@@ -70,6 +70,14 @@ export default function ClassroomDashboard() {
   const [statusError, setStatusError] = useState('');
   const modalRef = useRef(null);
 
+  // QRコードモーダル（再研修URL用）
+  const [qrModal, setQrModal] = useState(null); // { url, title }
+  const getRetrainUrl = (operatorCode, classroomCode, track) => {
+    const base = typeof window !== 'undefined' ? window.location.origin : '';
+    const trackParam = track === 'manager' ? '&track=manager' : '';
+    return `${base}/register?biz=${operatorCode}&cls=${classroomCode}${trackParam}`;
+  };
+
   // 再研修URLコピー
   const [copiedTraineeId, setCopiedTraineeId] = useState('');
   const copyRetrainUrl = (traineeId, operatorCode, classroomCode, track) => {
@@ -290,17 +298,23 @@ export default function ClassroomDashboard() {
     const auth = JSON.parse(sessionStorage.getItem('classroomAuth') || localStorage.getItem('classroomAuth') || '{}');
     const filename = `受講記録_${auth.classroomName || ''}_${label}_${new Date().toISOString().slice(0,10)}.csv`;
 
-    const header = ['受講日時', '氏名', '研修種別', '得点', '合否', '修了日', '有効期限', '修了番号'];
-    const rows = [header, ...filtered.map(r => [
-      r.submittedAt ? new Date(r.submittedAt).toLocaleString('ja-JP') : '',
-      r.fullName || '',
-      r.track === 'manager' ? '情報管理責任者研修' : '一般研修',
-      r.score ?? '',
-      r.passed ? '合格' : '不合格',
-      r.completionDate || '',
-      calcExpiry(r.completionDate) || '',
-      r.certNumber || '',
-    ])];
+    const base = typeof window !== 'undefined' ? window.location.origin : '';
+    const header = ['受講日時', '氏名', '研修種別', '得点', '合否', '修了日', '有効期限', '修了番号', '再研修URL'];
+    const rows = [header, ...filtered.map(r => {
+      const trackParam = r.track === 'manager' ? '&track=manager' : '';
+      const retrainUrl = `${base}/register?biz=${r.operatorCode || r.memberCode || ''}&cls=${r.classroomCode || ''}${trackParam}`;
+      return [
+        r.submittedAt ? new Date(r.submittedAt).toLocaleString('ja-JP') : '',
+        r.fullName || '',
+        r.track === 'manager' ? '情報管理責任者研修' : '一般研修',
+        r.score ?? '',
+        r.passed ? '合格' : '不合格',
+        r.completionDate || '',
+        calcExpiry(r.completionDate) || '',
+        r.certNumber || '',
+        retrainUrl,
+      ];
+    })];
     downloadCsv(filename, rows);
   };
 
@@ -551,6 +565,12 @@ export default function ClassroomDashboard() {
                             >
                               {copiedTraineeId === r.id ? '✓ コピー済' : '🔗 再研修URL'}
                             </button>
+                            <button
+                              onClick={() => setQrModal({ url: getRetrainUrl(auth.operatorCode, auth.classroomCode, r.track), title: `${r.fullName || ''}の再研修QR` })}
+                              className="text-xs px-2 py-1 rounded border bg-white border-purple-300 text-purple-600 hover:bg-purple-50 font-medium transition-colors whitespace-nowrap"
+                            >
+                              📱 QR
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -568,6 +588,32 @@ export default function ClassroomDashboard() {
           ════════════════════════════════════════ */}
       {activeTab === 'trainees' && (
         <div>
+          {trainees.length > 0 && (
+            <div className="flex justify-end mb-3">
+              <button
+                onClick={() => {
+                  const base = typeof window !== 'undefined' ? window.location.origin : '';
+                  const header = ['氏名', '研修種別', 'ステータス', '有効期限', '再研修URL'];
+                  const rows = trainees.map((t) => {
+                    const lp = records.filter((r) => r.passed && r.fullName === t.fullName)
+                      .sort((a, b) => (b.submittedAt||'').localeCompare(a.submittedAt||''))[0];
+                    const trackParam = t.track === 'manager' ? '&track=manager' : '';
+                    return [
+                      t.fullName || '',
+                      t.track === 'manager' ? '情報管理責任者研修' : '一般研修',
+                      t.status === 'active' ? '在籍中' : t.status === 'retired' ? '退職済' : '停止中',
+                      lp ? (calcExpiry(lp.completionDate) || '') : '',
+                      `${base}/register?biz=${auth.operatorCode}&cls=${auth.classroomCode}${trackParam}`,
+                    ];
+                  });
+                  downloadCsv(`受講者一覧_${auth.classroomName || ''}_${new Date().toISOString().slice(0,10)}.csv`, [header, ...rows]);
+                }}
+                className="text-xs px-3 py-1.5 bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                📥 受講者一覧CSV（再研修URL付き）
+              </button>
+            </div>
+          )}
           {trainees.length === 0 ? (
             <div className="text-center py-16 text-gray-400">
               <svg className="w-10 h-10 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -646,6 +692,12 @@ export default function ClassroomDashboard() {
                             >
                               {copiedTraineeId === t.id ? '✓ コピー済' : '🔗 再研修URL'}
                             </button>
+                            <button
+                              onClick={() => setQrModal({ url: getRetrainUrl(auth.operatorCode, auth.classroomCode, t.track), title: `${t.fullName || ''}の再研修QR` })}
+                              className="text-xs px-3 py-1.5 rounded-lg border bg-white border-purple-300 text-purple-600 hover:bg-purple-50 font-medium shadow-sm transition-colors whitespace-nowrap"
+                            >
+                              📱 QR
+                            </button>
                             {statusKey === 'suspended' && (
                               <button
                                 onClick={() => { setDeleteModal({ id: t.id, fullName: t.fullName || '（氏名なし）' }); setDeleteError(''); }}
@@ -663,6 +715,26 @@ export default function ClassroomDashboard() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════
+          再研修QRコードモーダル
+          ════════════════════════════════════════ */}
+      {qrModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setQrModal(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xs text-center" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm font-bold text-gray-800 mb-1">📱 再研修QRコード</p>
+            <p className="text-xs font-medium text-gray-600 mb-3">{qrModal.title}</p>
+            <div className="flex justify-center mb-4 p-3 bg-gray-50 rounded-xl">
+              <QRCodeCanvas value={qrModal.url} size={200} />
+            </div>
+            <p className="text-xs text-gray-400 break-all mb-4 bg-gray-50 rounded-lg px-3 py-2 text-left">{qrModal.url}</p>
+            <button onClick={() => setQrModal(null)}
+              className="w-full bg-green-700 hover:bg-green-600 text-white text-sm font-semibold py-2 rounded-xl transition-colors">
+              閉じる
+            </button>
+          </div>
         </div>
       )}
 

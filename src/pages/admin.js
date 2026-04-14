@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import Layout from '../components/Layout';
+import dynamic from 'next/dynamic';
+const QRCodeCanvas = dynamic(() => import('qrcode.react').then(m => m.QRCodeCanvas), { ssr: false });
 
 /**
  * JJA 協会本部 管理画面
@@ -97,6 +99,14 @@ export default function AdminPage() {
   const [clsPwChanging, setClsPwChanging] = useState(false);
   const [clsPwError, setClsPwError]   = useState('');
   const [showClsPasswords, setShowClsPasswords] = useState(false);
+
+  // QRコードモーダル（再研修URL用）
+  const [qrModal, setQrModal] = useState(null); // { url, title }
+  const getRetrainUrl = (operatorCode, classroomCode, track) => {
+    const base = typeof window !== 'undefined' ? window.location.origin : '';
+    const trackParam = track === 'manager' ? '&track=manager' : '';
+    return `${base}/register?biz=${operatorCode}&cls=${classroomCode}${trackParam}`;
+  };
 
   // 新規事業者登録フォーム
   const [showAddOpForm, setShowAddOpForm]   = useState(false);
@@ -582,16 +592,24 @@ export default function AdminPage() {
                               const retrainUrl = `${base}/register?biz=${r.operatorCode || r.memberCode}&cls=${r.classroomCode}${trackParam}`;
                               const key = `rec-retrain-${r.id || idx}`;
                               return (
-                                <button
-                                  onClick={() => copyUrl(key, retrainUrl)}
-                                  className={`text-xs px-2 py-1 rounded border transition-colors whitespace-nowrap ${
-                                    copiedKey === key
-                                      ? 'bg-green-700 text-white border-green-700'
-                                      : 'bg-white border-blue-300 text-blue-600 hover:bg-blue-50'
-                                  }`}
-                                >
-                                  {copiedKey === key ? '✓ コピー済' : '🔗 再研修URL'}
-                                </button>
+                                <div className="flex items-center gap-1.5 justify-center flex-wrap">
+                                  <button
+                                    onClick={() => copyUrl(key, retrainUrl)}
+                                    className={`text-xs px-2 py-1 rounded border transition-colors whitespace-nowrap ${
+                                      copiedKey === key
+                                        ? 'bg-green-700 text-white border-green-700'
+                                        : 'bg-white border-blue-300 text-blue-600 hover:bg-blue-50'
+                                    }`}
+                                  >
+                                    {copiedKey === key ? '✓ コピー済' : '🔗 再研修URL'}
+                                  </button>
+                                  <button
+                                    onClick={() => setQrModal({ url: retrainUrl, title: `${r.fullName || ''}の再研修QR` })}
+                                    className="text-xs px-2 py-1 rounded border bg-white border-purple-300 text-purple-600 hover:bg-purple-50 transition-colors whitespace-nowrap"
+                                  >
+                                    📱 QR
+                                  </button>
+                                </div>
                               );
                             })()}
                           </td>
@@ -971,16 +989,24 @@ export default function AdminPage() {
                                 const retrainUrl = `${base}/register?biz=${t.operatorCode}&cls=${t.classroomCode}${trackParam}`;
                                 const key = `retrain-${t.id}`;
                                 return (
-                                  <button
-                                    onClick={() => copyUrl(key, retrainUrl)}
-                                    className={`text-xs px-2.5 py-1 rounded border transition-colors whitespace-nowrap ${
-                                      copiedKey === key
-                                        ? 'bg-green-700 text-white border-green-700'
-                                        : 'bg-white border-blue-300 text-blue-600 hover:bg-blue-50'
-                                    }`}
-                                  >
-                                    {copiedKey === key ? '✓ コピー済' : '🔗 再研修URL'}
-                                  </button>
+                                  <>
+                                    <button
+                                      onClick={() => copyUrl(key, retrainUrl)}
+                                      className={`text-xs px-2.5 py-1 rounded border transition-colors whitespace-nowrap ${
+                                        copiedKey === key
+                                          ? 'bg-green-700 text-white border-green-700'
+                                          : 'bg-white border-blue-300 text-blue-600 hover:bg-blue-50'
+                                      }`}
+                                    >
+                                      {copiedKey === key ? '✓ コピー済' : '🔗 再研修URL'}
+                                    </button>
+                                    <button
+                                      onClick={() => setQrModal({ url: retrainUrl, title: `${t.fullName || ''}の再研修QR` })}
+                                      className="text-xs px-2 py-1 rounded border bg-white border-purple-300 text-purple-600 hover:bg-purple-50 transition-colors whitespace-nowrap"
+                                    >
+                                      📱 QR
+                                    </button>
+                                  </>
                                 );
                               })()}
                             </div>
@@ -1003,6 +1029,21 @@ export default function AdminPage() {
           ※ 試作版です。本番では適切な認証・権限管理を実装してください。
         </p>
       </div>
+
+      {/* ===== QRコードモーダル ===== */}
+      {qrModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setQrModal(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xs text-center" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm font-bold text-gray-800 mb-1">📱 再研修QRコード</p>
+            <p className="text-xs font-medium text-gray-600 mb-3">{qrModal.title}</p>
+            <div className="flex justify-center mb-4 p-3 bg-gray-50 rounded-xl">
+              <QRCodeCanvas value={qrModal.url} size={200} />
+            </div>
+            <p className="text-xs text-gray-400 break-all mb-4 bg-gray-50 rounded-lg px-3 py-2 text-left">{qrModal.url}</p>
+            <button onClick={() => setQrModal(null)} className="w-full bg-green-700 hover:bg-green-600 text-white text-sm font-semibold py-2 rounded-xl transition-colors">閉じる</button>
+          </div>
+        </div>
+      )}
 
       {/* ===== 事業者パスワード変更モーダル ===== */}
       {pwChangeModal && (
