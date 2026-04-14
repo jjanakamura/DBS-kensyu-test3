@@ -662,23 +662,36 @@ tr:nth-child(even) td { background: #f9fafb; }
   <div class="breadcrumb">Chapter 4　従事者（受講者）の操作方法 <span>›</span> <span class="cur">4-2〜4-4　動画・テスト・修了証</span></div>
   <div class="sec-title"><span class="sec-num">4-2</span>研修動画の視聴</div>
 
-  <div class="step"><div class="step-n">1</div><div class="step-body"><div class="t">動画を最後まで視聴する</div><div class="d">視聴が完了すると「確認テストへ進む」ボタンが有効になります。</div></div></div>
+  <div class="step"><div class="step-n">1</div><div class="step-body"><div class="t">動画を通常速度（最大2倍速）で 85% 以上視聴する</div><div class="d">早送り・シークはカウントされません。視聴進捗バーが 85% に達すると「確認テストへ進む」ボタンが有効になります。</div></div></div>
+  <div class="step"><div class="step-n">2</div><div class="step-body"><div class="t">視聴進捗バーを確認しながら視聴を続ける</div><div class="d">青いバーが伸び、85% ラインを超えるとボタンが緑色に変わります。途中で中断してもページをリロードすれば進捗は引き継がれます。</div></div></div>
 
   <div class="mock">
     <div class="mock-bar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444;"></div><div class="mock-dot" style="background:#f59e0b;"></div><div class="mock-dot" style="background:#22c55e;"></div></div><span style="font-family:monospace;">/video</span></div>
     <div class="mock-body">
-      <div style="background:#000;aspect-ratio:16/9;max-height:24mm;display:flex;align-items:center;justify-content:center;border-radius:3px;margin-bottom:2mm;"><div style="width:9mm;height:9mm;background:rgba(255,0,0,0.85);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10pt;padding-left:1mm;">▶</div></div>
-      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:3px;padding:2mm 3mm;font-size:8pt;color:#6b7280;">動画を最後まで視聴すると「確認テストへ進む」ボタンが有効になります。</div>
+      <div style="background:#000;aspect-ratio:16/9;max-height:20mm;display:flex;align-items:center;justify-content:center;border-radius:3px;margin-bottom:2mm;"><div style="width:9mm;height:9mm;background:rgba(255,0,0,0.85);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10pt;padding-left:1mm;">▶</div></div>
+      <!-- 視聴進捗バー mock -->
+      <div style="border:1px solid #d1fae5;background:#fff;border-radius:4px;padding:2.5mm 3mm;margin-bottom:2mm;">
+        <div style="display:flex;justify-content:space-between;font-size:7.5pt;margin-bottom:1.5mm;"><span style="color:#4b5563;font-weight:bold;">視聴進捗</span><span style="color:#3b82f6;font-weight:bold;">62% / 85% </span></div>
+        <div style="position:relative;height:2.5mm;background:#f3f4f6;border-radius:99px;overflow:hidden;">
+          <div style="position:absolute;top:0;bottom:0;width:0.5mm;background:#4ade80;left:85%;z-index:1;"></div>
+          <div style="height:100%;width:62%;background:#60a5fa;border-radius:99px;"></div>
+        </div>
+        <div style="font-size:7pt;color:#9ca3af;margin-top:1mm;">残り約 4 分以上の視聴が必要です。</div>
+      </div>
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:3px;padding:2mm 3mm;font-size:7.5pt;color:#1d4ed8;">▶ 視聴中... 視聴進捗 62%（早送りはカウントされません）</div>
+      <div style="margin-top:2mm;background:#d1d5db;color:#fff;padding:2.5mm;border-radius:4px;font-size:8.5pt;font-weight:bold;text-align:center;cursor:not-allowed;">動画を 85% 以上視聴してください（現在 62%）</div>
     </div>
-    <div class="mock-cap">▲ 動画終了後にボタンが緑色になります。途中でページを閉じると最初から再視聴が必要です。</div>
+    <div class="mock-cap">▲ 視聴進捗バーの青バーが 85% ラインを超えるとボタンが緑色になります。早送りはカウントされません。</div>
   </div>
+
+  <div class="warn"><strong>！</strong>　早送り・シークで飛ばした部分は視聴時間にカウントされません。必ず通常速度（最大2倍速）でご視聴ください。</div>
 
   <div class="sec-title" style="margin-top:4mm;"><span class="sec-num">4-3</span>確認テストの受験</div>
 
   <div class="step"><div class="step-n">1</div><div class="step-body"><div class="t">全20問に回答する</div><div class="d">40問バンクからランダム出題。問題・選択肢の順番は毎回変わります。</div></div></div>
   <div class="step"><div class="step-n">2</div><div class="step-body"><div class="t">全問回答後「採点する」を押す</div><div class="d">合格基準：16問以上正解（80%以上）</div></div></div>
 
-  <div class="warn"><strong>！</strong>　不合格が3回に達すると、動画視聴からやり直しになります。</div>
+  <div class="warn"><strong>！</strong>　不合格が3回に達すると、動画視聴（85%以上）からやり直しになります。</div>
 
   <div class="sec-title" style="margin-top:4mm;"><span class="sec-num">4-4</span>修了証のPDF保存</div>
 
