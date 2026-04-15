@@ -12,6 +12,9 @@ export default function OperatorLogin() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // セッション切れによるリダイレクト時にメッセージを表示
+  const sessionExpired = router.query.expired === '1';
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -72,6 +75,11 @@ export default function OperatorLogin() {
                 placeholder="パスワードを入力"
               />
             </div>
+            {sessionExpired && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                ⏰ セッションが期限切れです。再ログインしてください。
+              </p>
+            )}
             {error && <p className="text-xs text-red-600">{error}</p>}
             <button
               type="submit"

@@ -96,6 +96,21 @@ export default function ClassroomDashboard() {
   const [deleteError, setDeleteError] = useState('');
   const deleteModalRef = useRef(null);
 
+  /**
+   * 認証付き fetch ラッパー
+   * 401 が返った場合はセッション切れとしてログインページへリダイレクト
+   */
+  const fetchWithAuth = async (url, options = {}) => {
+    const res = await fetch(url, options);
+    if (res.status === 401) {
+      sessionStorage.removeItem('classroomAuth');
+      localStorage.removeItem('classroomAuth');
+      router.replace('/classroom/login?expired=1');
+      return null;
+    }
+    return res;
+  };
+
   // ── 認証チェック ──────────────────────────────────────────────
   useEffect(() => {
     try {
@@ -121,9 +136,10 @@ export default function ClassroomDashboard() {
       try {
         const ch = { 'x-classroom-token': auth.classroomToken || '', 'x-classroom-code': auth.classroomCode || '' };
         const [recRes, trnRes] = await Promise.all([
-          fetch(`/api/get-operator-records?operatorCode=${encodeURIComponent(auth.operatorCode)}`, { headers: ch }),
-          fetch(`/api/get-trainees?operatorCode=${encodeURIComponent(auth.operatorCode)}&includeRetired=true`, { headers: ch }),
+          fetchWithAuth(`/api/get-operator-records?operatorCode=${encodeURIComponent(auth.operatorCode)}`, { headers: ch }),
+          fetchWithAuth(`/api/get-trainees?operatorCode=${encodeURIComponent(auth.operatorCode)}&includeRetired=true`, { headers: ch }),
         ]);
+        if (!recRes || !trnRes) return;
         const recJson = await recRes.json();
         const trnJson = await trnRes.json();
 
@@ -187,11 +203,12 @@ export default function ClassroomDashboard() {
     setStatusUpdating(true);
     setStatusError('');
     try {
-      const res = await fetch('/api/update-trainee-status', {
+      const res = await fetchWithAuth('/api/update-trainee-status', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', 'x-classroom-token': auth?.classroomToken || '', 'x-classroom-code': auth?.classroomCode || '' },
         body:    JSON.stringify({ id: statusModal.id, status: modalStatus, notes: modalNotes }),
       });
+      if (!res) return;
       const json = await res.json();
       if (!res.ok) {
         setStatusError(json.error || 'ステータスの更新に失敗しました。');
@@ -219,11 +236,12 @@ export default function ClassroomDashboard() {
     setDeleteUpdating(true);
     setDeleteError('');
     try {
-      const res = await fetch('/api/delete-trainee', {
+      const res = await fetchWithAuth('/api/delete-trainee', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', 'x-classroom-token': auth?.classroomToken || '', 'x-classroom-code': auth?.classroomCode || '' },
         body:    JSON.stringify({ id: deleteModal.id }),
       });
+      if (!res) return;
       const json = await res.json();
       if (!res.ok || !json.success) {
         setDeleteError(json.error || '削除に失敗しました。');

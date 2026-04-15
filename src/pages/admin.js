@@ -120,9 +120,10 @@ export default function AdminPage() {
   const fetchAccessLogs = async () => {
     setLogsLoading(true);
     try {
-      const res = await fetch('/api/get-access-logs?limit=500', {
+      const res = await fetchWithAuth('/api/get-access-logs?limit=500', {
         headers: { 'x-admin-token': adminToken },
       });
+      if (!res) return;
       const data = await res.json();
       setAccessLogs(data.logs || []);
     } catch (e) { console.error(e); }
@@ -138,11 +139,12 @@ export default function AdminPage() {
     setCleanupRunning(true);
     try {
       const ah = { 'Content-Type': 'application/json', 'x-admin-token': adminToken };
-      const res = await fetch('/api/cron/cleanup-trainees', {
+      const res = await fetchWithAuth('/api/cron/cleanup-trainees', {
         method: 'POST',
         headers: ah,
         body: JSON.stringify({ dryRun }),
       });
+      if (!res) return;
       const data = await res.json();
       if (dryRun) {
         setCleanupDryResult(data);
@@ -150,9 +152,10 @@ export default function AdminPage() {
         setCleanupResult(data);
         setCleanupDryResult(null);
         // 受講者一覧を再取得して画面を更新
-        const trnRes = await fetch('/api/get-trainees?includeRetired=true', {
+        const trnRes = await fetchWithAuth('/api/get-trainees?includeRetired=true', {
           headers: { 'x-admin-token': adminToken },
         });
+        if (!trnRes) return;
         setTrainees((await trnRes.json()).trainees || []);
       }
     } catch (e) {
@@ -170,6 +173,21 @@ export default function AdminPage() {
   const [newOpPassword, setNewOpPassword]   = useState('');
   const [addOpError, setAddOpError]         = useState('');
   const [addOpLoading, setAddOpLoading]     = useState(false);
+
+  /**
+   * 認証付き fetch ラッパー
+   * 401 が返った場合はセッション切れとしてログイン画面へ戻す
+   */
+  const fetchWithAuth = async (url, options = {}) => {
+    const res = await fetch(url, options);
+    if (res.status === 401) {
+      setAuthed(false);
+      setAdminToken('');
+      setPwError('セッションが期限切れです。再ログインしてください。');
+      return null;
+    }
+    return res;
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -198,6 +216,7 @@ export default function AdminPage() {
         fetch('/api/get-classrooms', { headers: ah }),
         fetch('/api/get-trainees?includeRetired=true', { headers: ah }),
       ]);
+      if (!recRes || !opRes || !clsRes || !trnRes) return;
       setRecords((await recRes.json()).records || []);
       setOperators((await opRes.json()).operators || []);
       setClassrooms((await clsRes.json()).classrooms || []);
@@ -211,11 +230,12 @@ export default function AdminPage() {
     try {
       const ah = { 'x-admin-token': adminToken };
       const [recRes, opRes, clsRes, trnRes] = await Promise.all([
-        fetch('/api/get-records', { headers: ah }),
-        fetch('/api/get-operators?includePasswords=true', { headers: ah }),
-        fetch('/api/get-classrooms', { headers: ah }),
-        fetch('/api/get-trainees?includeRetired=true', { headers: ah }),
+        fetchWithAuth('/api/get-records', { headers: ah }),
+        fetchWithAuth('/api/get-operators?includePasswords=true', { headers: ah }),
+        fetchWithAuth('/api/get-classrooms', { headers: ah }),
+        fetchWithAuth('/api/get-trainees?includeRetired=true', { headers: ah }),
       ]);
+      if (!recRes || !opRes || !clsRes || !trnRes) return;
       setRecords((await recRes.json()).records || []);
       setOperators((await opRes.json()).operators || []);
       setClassrooms((await clsRes.json()).classrooms || []);
@@ -310,11 +330,12 @@ export default function AdminPage() {
     if (!statusModal) return;
     setStatusUpdating(true);
     try {
-      const res = await fetch('/api/update-trainee-status', {
+      const res = await fetchWithAuth('/api/update-trainee-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
         body: JSON.stringify({ id: statusModal.id, status: modalStatus, notes: modalNotes }),
       });
+      if (!res) return;
       const data = await res.json();
       if (data.success) {
         setTrainees((prev) => prev.map((t) => t.id === statusModal.id ? data.trainee : t));
@@ -329,7 +350,7 @@ export default function AdminPage() {
     setAddOpError('');
     setAddOpLoading(true);
     try {
-      const res = await fetch('/api/add-operator', {
+      const res = await fetchWithAuth('/api/add-operator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
         body: JSON.stringify({
@@ -339,6 +360,7 @@ export default function AdminPage() {
           adminPassword: newOpPassword,
         }),
       });
+      if (!res) return;
       const data = await res.json();
       if (!res.ok || !data.success) {
         setAddOpError(data.error || '登録に失敗しました。');
@@ -360,11 +382,12 @@ export default function AdminPage() {
     if (!newPwValue.trim()) { setPwChangeError('パスワードを入力してください。'); return; }
     setPwChanging(true); setPwChangeError('');
     try {
-      const res = await fetch('/api/update-operator', {
+      const res = await fetchWithAuth('/api/update-operator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
         body: JSON.stringify({ operatorCode: pwChangeModal.operatorCode, adminPassword: newPwValue }),
       });
+      if (!res) return;
       const data = await res.json();
       if (!res.ok || !data.success) { setPwChangeError(data.error || '変更に失敗しました。'); return; }
       setPwChangeModal(null); setNewPwValue('');
@@ -378,11 +401,12 @@ export default function AdminPage() {
     if (!newClsPw.trim()) { setClsPwError('パスワードを入力してください。'); return; }
     setClsPwChanging(true); setClsPwError('');
     try {
-      const res = await fetch('/api/update-classroom-password', {
+      const res = await fetchWithAuth('/api/update-classroom-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
         body: JSON.stringify({ classroomCode: clsPwModal.classroomCode, classroomPassword: newClsPw }),
       });
+      if (!res) return;
       const data = await res.json();
       if (!res.ok || !data.success) { setClsPwError(data.error || '変更に失敗しました。'); return; }
       setClsPwModal(null); setNewClsPw('');
@@ -399,11 +423,12 @@ export default function AdminPage() {
       message: `「${op.companyName}」のステータスを「${label}」に変更しますか？`,
       onConfirm: async () => {
         try {
-          const res = await fetch('/api/update-operator', {
+          const res = await fetchWithAuth('/api/update-operator', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
             body: JSON.stringify({ operatorCode: op.operatorCode, status: newStatus }),
           });
+          if (!res) return;
           const data = await res.json();
           if (!res.ok || !data.success) { setConfirmModal({ message: data.error || '変更に失敗しました。', errorOnly: true }); return; }
           setOperators((prev) => prev.map((o) =>
@@ -422,11 +447,12 @@ export default function AdminPage() {
       message: `「${cls.classroomName}」のステータスを「${label}」に変更しますか？`,
       onConfirm: async () => {
         try {
-          const res = await fetch('/api/update-classroom-status', {
+          const res = await fetchWithAuth('/api/update-classroom-status', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
             body: JSON.stringify({ classroomCode: cls.classroomCode, status: newStatus }),
           });
+          if (!res) return;
           const data = await res.json();
           if (!res.ok || !data.success) { setConfirmModal({ message: data.error || '変更に失敗しました。', errorOnly: true }); return; }
           setClassrooms((prev) => prev.map((c) =>

@@ -71,17 +71,32 @@ export default function OperatorDashboard() {
   const [newClsCode, setNewClsCode] = useState('');
   const [clsChanging, setClsChanging] = useState(false);
 
+  /**
+   * 認証付き fetch ラッパー
+   * 401 が返った場合はセッション切れとしてログインページへリダイレクト
+   */
+  const fetchWithAuth = async (url, options = {}) => {
+    const res = await fetch(url, options);
+    if (res.status === 401) {
+      sessionStorage.removeItem('operatorAuth');
+      router.replace('/operator/login?expired=1');
+      return null;
+    }
+    return res;
+  };
+
   const handleClassroomChange = async () => {
     if (!clsChangeModal || !newClsCode) return;
     const selected = classrooms.find((c) => c.classroomCode === newClsCode);
     if (!selected) return;
     setClsChanging(true);
     try {
-      const res = await fetch('/api/update-trainee-classroom', {
+      const res = await fetchWithAuth('/api/update-trainee-classroom', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-operator-token': auth?.operatorToken || '', 'x-operator-code': auth?.operatorCode || '' },
         body: JSON.stringify({ id: clsChangeModal.id, classroomCode: selected.classroomCode, classroomName: selected.classroomName }),
       });
+      if (!res) return;
       if (res.ok) {
         setTrainees((prev) => prev.map((t) =>
           t.id === clsChangeModal.id ? { ...t, classroomCode: selected.classroomCode, classroomName: selected.classroomName } : t
@@ -130,10 +145,11 @@ export default function OperatorDashboard() {
     const oh = { 'x-operator-token': tok, 'x-operator-code': operatorCode };
     try {
       const [clsRes, recRes, trnRes] = await Promise.all([
-        fetch(`/api/get-classrooms?operatorCode=${operatorCode}`, { headers: oh }),
-        fetch(`/api/get-operator-records?operatorCode=${operatorCode}`, { headers: oh }),
-        fetch(`/api/get-trainees?operatorCode=${operatorCode}&includeRetired=true`, { headers: oh }),
+        fetchWithAuth(`/api/get-classrooms?operatorCode=${operatorCode}`, { headers: oh }),
+        fetchWithAuth(`/api/get-operator-records?operatorCode=${operatorCode}`, { headers: oh }),
+        fetchWithAuth(`/api/get-trainees?operatorCode=${operatorCode}&includeRetired=true`, { headers: oh }),
       ]);
+      if (!clsRes || !recRes || !trnRes) return;
       const clsData = await clsRes.json();
       const recData = await recRes.json();
       const trnData = await trnRes.json();
@@ -167,11 +183,12 @@ export default function OperatorDashboard() {
       message: `「${cls.classroomName}」のステータスを「${label}」に変更しますか？`,
       onConfirm: async () => {
         try {
-          const res = await fetch('/api/update-classroom-status', {
+          const res = await fetchWithAuth('/api/update-classroom-status', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-operator-token': auth?.operatorToken || '', 'x-operator-code': auth?.operatorCode || '' },
             body: JSON.stringify({ classroomCode: cls.classroomCode, status: newStatus }),
           });
+          if (!res) return;
           const data = await res.json();
           if (!res.ok || !data.success) { setConfirmModal({ message: data.error || '変更に失敗しました。', errorOnly: true }); return; }
           setClassrooms((prev) => prev.map((c) =>
@@ -188,11 +205,12 @@ export default function OperatorDashboard() {
     if (!newClsPw.trim()) { setClsPwError('パスワードを入力してください。'); return; }
     setClsPwChanging(true); setClsPwError('');
     try {
-      const res = await fetch('/api/update-classroom-password', {
+      const res = await fetchWithAuth('/api/update-classroom-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-operator-token': auth?.operatorToken || '', 'x-operator-code': auth?.operatorCode || '' },
         body: JSON.stringify({ classroomCode: clsPwModal.classroomCode, classroomPassword: newClsPw }),
       });
+      if (!res) return;
       const data = await res.json();
       if (!res.ok || !data.success) { setClsPwError(data.error || '変更に失敗しました。'); return; }
       setClsPwModal(null); setNewClsPw('');
@@ -227,11 +245,12 @@ export default function OperatorDashboard() {
     if (!statusModal) return;
     setStatusUpdating(true);
     try {
-      const res = await fetch('/api/update-trainee-status', {
+      const res = await fetchWithAuth('/api/update-trainee-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-operator-token': auth?.operatorToken || '', 'x-operator-code': auth?.operatorCode || '' },
         body: JSON.stringify({ id: statusModal.id, status: modalStatus, notes: modalNotes }),
       });
+      if (!res) return;
       const data = await res.json();
       if (data.success) {
         setTrainees((prev) => prev.map((t) => t.id === statusModal.id ? data.trainee : t));
