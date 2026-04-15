@@ -31,6 +31,7 @@ export default function OperatorLogin() {
         sessionStorage.setItem('operatorAuth', JSON.stringify({
           operatorCode: data.operatorCode,
           companyName: data.companyName,
+          operatorToken: data.operatorToken,
         }));
         router.push('/operator/dashboard');
       } else {

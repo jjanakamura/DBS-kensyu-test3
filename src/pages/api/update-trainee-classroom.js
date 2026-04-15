@@ -1,9 +1,11 @@
 import fs from 'fs';
 import { getDataPath } from '../../lib/dataPath';
+import { getAuthScope } from '../../lib/auth';
 
 /**
  * 受講者の所属教室変更 API
  * POST /api/update-trainee-classroom
+ * 認証: 管理者 / 事業者 / 教室トークン必須
  *
  * リクエスト: { id, classroomCode, classroomName }
  * - 受講者プロファイル（trainees.json）の教室情報のみ更新
@@ -13,6 +15,9 @@ export default function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  const authScope = getAuthScope(req, res);
+  if (!authScope) return;
 
   const { id, classroomCode, classroomName } = req.body;
 

@@ -79,7 +79,7 @@ export default function OperatorDashboard() {
     try {
       const res = await fetch('/api/update-trainee-classroom', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-operator-token': auth?.operatorToken || '', 'x-operator-code': auth?.operatorCode || '' },
         body: JSON.stringify({ id: clsChangeModal.id, classroomCode: selected.classroomCode, classroomName: selected.classroomName }),
       });
       if (res.ok) {
@@ -121,16 +121,18 @@ export default function OperatorDashboard() {
     if (!stored) { router.replace('/operator/login'); return; }
     const parsed = JSON.parse(stored);
     setAuth(parsed);
-    fetchData(parsed.operatorCode);
+    fetchData(parsed.operatorCode, parsed.operatorToken || '');
   }, []);
 
-  const fetchData = async (operatorCode) => {
+  const fetchData = async (operatorCode, operatorToken) => {
     setLoading(true);
+    const tok = operatorToken || (auth?.operatorToken) || '';
+    const oh = { 'x-operator-token': tok, 'x-operator-code': operatorCode };
     try {
       const [clsRes, recRes, trnRes] = await Promise.all([
-        fetch(`/api/get-classrooms?operatorCode=${operatorCode}`),
-        fetch(`/api/get-operator-records?operatorCode=${operatorCode}`),
-        fetch(`/api/get-trainees?operatorCode=${operatorCode}&includeRetired=true`),
+        fetch(`/api/get-classrooms?operatorCode=${operatorCode}`, { headers: oh }),
+        fetch(`/api/get-operator-records?operatorCode=${operatorCode}`, { headers: oh }),
+        fetch(`/api/get-trainees?operatorCode=${operatorCode}&includeRetired=true`, { headers: oh }),
       ]);
       const clsData = await clsRes.json();
       const recData = await recRes.json();
@@ -167,7 +169,7 @@ export default function OperatorDashboard() {
         try {
           const res = await fetch('/api/update-classroom-status', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-operator-token': auth?.operatorToken || '', 'x-operator-code': auth?.operatorCode || '' },
             body: JSON.stringify({ classroomCode: cls.classroomCode, status: newStatus }),
           });
           const data = await res.json();
@@ -188,7 +190,7 @@ export default function OperatorDashboard() {
     try {
       const res = await fetch('/api/update-classroom-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-operator-token': auth?.operatorToken || '', 'x-operator-code': auth?.operatorCode || '' },
         body: JSON.stringify({ classroomCode: clsPwModal.classroomCode, classroomPassword: newClsPw }),
       });
       const data = await res.json();
@@ -227,7 +229,7 @@ export default function OperatorDashboard() {
     try {
       const res = await fetch('/api/update-trainee-status', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-operator-token': auth?.operatorToken || '', 'x-operator-code': auth?.operatorCode || '' },
         body: JSON.stringify({ id: statusModal.id, status: modalStatus, notes: modalNotes }),
       });
       const data = await res.json();

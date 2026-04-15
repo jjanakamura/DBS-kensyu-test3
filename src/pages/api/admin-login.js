@@ -1,4 +1,5 @@
 import { writeAccessLog } from '../../lib/accessLog';
+import { generateAdminToken } from '../../lib/auth';
 
 /**
  * 管理者ログイン API
@@ -30,7 +31,7 @@ export default function handler(req, res) {
 
   if (password === expected) {
     writeAccessLog({ type: 'admin', target: 'ADMIN', result: 'success', req });
-    return res.status(200).json({ success: true });
+    return res.status(200).json({ success: true, adminToken: generateAdminToken() });
   } else {
     writeAccessLog({ type: 'admin', target: 'ADMIN', result: 'fail', reason: 'パスワード不正', req });
     return res.status(200).json({ success: false, message: 'パスワードが正しくありません。' });

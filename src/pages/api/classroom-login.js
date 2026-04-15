@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { getDataPath } from '../../lib/dataPath';
 import { writeAccessLog } from '../../lib/accessLog';
+import { generateClassroomToken } from '../../lib/auth';
 
 /**
  * 教室ダッシュボード ログイン API
@@ -69,6 +70,7 @@ export default function handler(req, res) {
       classroomCode: classroom.classroomCode,
       companyName: operator.companyName,
       classroomName: classroom.classroomName,
+      classroomToken: generateClassroomToken(storedPw),
     });
   } catch (err) {
     console.error('classroom-login エラー:', err);

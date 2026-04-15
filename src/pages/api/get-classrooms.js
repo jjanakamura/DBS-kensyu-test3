@@ -1,23 +1,38 @@
 import fs from 'fs';
 import { getDataDir } from '../../lib/dataPath';
+import { getAuthScope } from '../../lib/auth';
 
 /**
  * 教室一覧取得 API
  * GET /api/get-classrooms?operatorCode=A001
- *
- * operatorCode を指定すると該当事業者の教室のみ返す
- * 未指定の場合は全教室を返す（JJA管理画面用）
+ * 認証: 管理者 / 事業者 / 教室トークン必須
+ *   - 管理者   : 全件取得可（operatorCode 省略時は全件）
+ *   - 事業者   : 自社（operatorCode）のみ取得可
+ *   - 教室     : 所属事業者（operatorCode）のみ取得可
  */
 export default function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const authScope = getAuthScope(req, res);
+  if (!authScope) return;
+
+  const { operatorCode } = req.query;
+
+  // 管理者以外は operatorCode 必須、かつ自スコープ内のみ
+  if (authScope.scope !== 'admin') {
+    if (!operatorCode) {
+      return res.status(403).json({ error: 'operatorCode の指定が必要です。' });
+    }
+    if (String(operatorCode).toUpperCase() !== authScope.operatorCode) {
+      return res.status(403).json({ error: 'このデータへのアクセス権がありません。' });
+    }
+  }
+
   try {
     const dataDir = getDataDir();
     const classrooms = JSON.parse(fs.readFileSync(`${dataDir}/classrooms.json`, 'utf-8'));
-
-    const { operatorCode } = req.query;
 
     let result = classrooms;
     if (operatorCode) {

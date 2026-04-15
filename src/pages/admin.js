@@ -93,6 +93,9 @@ export default function AdminPage() {
   const [pwChanging, setPwChanging]       = useState(false);
   const [pwChangeError, setPwChangeError] = useState('');
 
+  // 管理者トークン（ログイン後に保持）
+  const [adminToken, setAdminToken] = useState('');
+
   // 教室パスワード変更モーダル
   const [clsPwModal, setClsPwModal]   = useState(null); // { classroomCode, classroomName }
   const [newClsPw, setNewClsPw]       = useState('');
@@ -117,7 +120,9 @@ export default function AdminPage() {
   const fetchAccessLogs = async () => {
     setLogsLoading(true);
     try {
-      const res = await fetch('/api/get-access-logs?limit=500');
+      const res = await fetch('/api/get-access-logs?limit=500', {
+        headers: { 'x-admin-token': adminToken },
+      });
       const data = await res.json();
       setAccessLogs(data.logs || []);
     } catch (e) { console.error(e); }
@@ -132,9 +137,10 @@ export default function AdminPage() {
   const runCleanupApi = async (dryRun) => {
     setCleanupRunning(true);
     try {
+      const ah = { 'Content-Type': 'application/json', 'x-admin-token': adminToken };
       const res = await fetch('/api/cron/cleanup-trainees', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: ah,
         body: JSON.stringify({ dryRun }),
       });
       const data = await res.json();
@@ -144,7 +150,9 @@ export default function AdminPage() {
         setCleanupResult(data);
         setCleanupDryResult(null);
         // 受講者一覧を再取得して画面を更新
-        const trnRes = await fetch('/api/get-trainees?includeRetired=true');
+        const trnRes = await fetch('/api/get-trainees?includeRetired=true', {
+          headers: { 'x-admin-token': adminToken },
+        });
         setTrainees((await trnRes.json()).trainees || []);
       }
     } catch (e) {
@@ -180,12 +188,15 @@ export default function AdminPage() {
         setLoading(false);
         return;
       }
+      const token = authData.adminToken || '';
+      setAdminToken(token);
       setAuthed(true);
+      const ah = { 'x-admin-token': token };
       const [recRes, opRes, clsRes, trnRes] = await Promise.all([
-        fetch('/api/get-records'),
-        fetch('/api/get-operators?includePasswords=true'),
-        fetch('/api/get-classrooms'),
-        fetch('/api/get-trainees?includeRetired=true'),
+        fetch('/api/get-records', { headers: ah }),
+        fetch('/api/get-operators?includePasswords=true', { headers: ah }),
+        fetch('/api/get-classrooms', { headers: ah }),
+        fetch('/api/get-trainees?includeRetired=true', { headers: ah }),
       ]);
       setRecords((await recRes.json()).records || []);
       setOperators((await opRes.json()).operators || []);
@@ -198,11 +209,12 @@ export default function AdminPage() {
   const refresh = async () => {
     setLoading(true);
     try {
+      const ah = { 'x-admin-token': adminToken };
       const [recRes, opRes, clsRes, trnRes] = await Promise.all([
-        fetch('/api/get-records'),
-        fetch('/api/get-operators?includePasswords=true'),
-        fetch('/api/get-classrooms'),
-        fetch('/api/get-trainees?includeRetired=true'),
+        fetch('/api/get-records', { headers: ah }),
+        fetch('/api/get-operators?includePasswords=true', { headers: ah }),
+        fetch('/api/get-classrooms', { headers: ah }),
+        fetch('/api/get-trainees?includeRetired=true', { headers: ah }),
       ]);
       setRecords((await recRes.json()).records || []);
       setOperators((await opRes.json()).operators || []);
@@ -300,7 +312,7 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/update-trainee-status', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
         body: JSON.stringify({ id: statusModal.id, status: modalStatus, notes: modalNotes }),
       });
       const data = await res.json();
@@ -319,7 +331,7 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/add-operator', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
         body: JSON.stringify({
           operatorCode: newOpCode,
           companyName:  newOpName,
@@ -350,7 +362,7 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/update-operator', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
         body: JSON.stringify({ operatorCode: pwChangeModal.operatorCode, adminPassword: newPwValue }),
       });
       const data = await res.json();
@@ -368,7 +380,7 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/update-classroom-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
         body: JSON.stringify({ classroomCode: clsPwModal.classroomCode, classroomPassword: newClsPw }),
       });
       const data = await res.json();
@@ -389,7 +401,7 @@ export default function AdminPage() {
         try {
           const res = await fetch('/api/update-operator', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
             body: JSON.stringify({ operatorCode: op.operatorCode, status: newStatus }),
           });
           const data = await res.json();
@@ -412,7 +424,7 @@ export default function AdminPage() {
         try {
           const res = await fetch('/api/update-classroom-status', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
             body: JSON.stringify({ classroomCode: cls.classroomCode, status: newStatus }),
           });
           const data = await res.json();

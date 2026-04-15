@@ -119,9 +119,10 @@ export default function ClassroomDashboard() {
       setLoading(true);
       setFetchError('');
       try {
+        const ch = { 'x-classroom-token': auth.classroomToken || '', 'x-classroom-code': auth.classroomCode || '' };
         const [recRes, trnRes] = await Promise.all([
-          fetch(`/api/get-operator-records?operatorCode=${encodeURIComponent(auth.operatorCode)}`),
-          fetch(`/api/get-trainees?operatorCode=${encodeURIComponent(auth.operatorCode)}&includeRetired=true`),
+          fetch(`/api/get-operator-records?operatorCode=${encodeURIComponent(auth.operatorCode)}`, { headers: ch }),
+          fetch(`/api/get-trainees?operatorCode=${encodeURIComponent(auth.operatorCode)}&includeRetired=true`, { headers: ch }),
         ]);
         const recJson = await recRes.json();
         const trnJson = await trnRes.json();
@@ -188,7 +189,7 @@ export default function ClassroomDashboard() {
     try {
       const res = await fetch('/api/update-trainee-status', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-classroom-token': auth?.classroomToken || '', 'x-classroom-code': auth?.classroomCode || '' },
         body:    JSON.stringify({ id: statusModal.id, status: modalStatus, notes: modalNotes }),
       });
       const json = await res.json();
@@ -220,7 +221,7 @@ export default function ClassroomDashboard() {
     try {
       const res = await fetch('/api/delete-trainee', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-classroom-token': auth?.classroomToken || '', 'x-classroom-code': auth?.classroomCode || '' },
         body:    JSON.stringify({ id: deleteModal.id }),
       });
       const json = await res.json();

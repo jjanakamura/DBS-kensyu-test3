@@ -1,16 +1,20 @@
 import fs from 'fs';
 import { getDataDir } from '../../lib/dataPath';
+import { requireAdmin } from '../../lib/auth';
 
 /**
- * 事業者一覧取得 API（JJA管理画面用）
+ * 事業者一覧取得 API（JJA管理画面専用）
  * GET /api/get-operators
+ * 認証: 管理者トークン必須（x-admin-token ヘッダー）
  *
- * ?includePasswords=true を付けると adminPassword も含めて返す（管理画面専用）
+ * ?includePasswords=true を付けると adminPassword も含めて返す
  */
 export default function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  if (!requireAdmin(req, res)) return;
 
   const { includePasswords } = req.query;
 

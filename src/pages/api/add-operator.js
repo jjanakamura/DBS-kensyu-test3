@@ -1,9 +1,11 @@
 import fs from 'fs';
 import { getDataPath } from '../../lib/dataPath';
+import { requireAdmin } from '../../lib/auth';
 
 /**
  * 新規事業者登録 API（JJA管理画面用）
  * POST /api/add-operator
+ * 認証: 管理者トークン必須
  *
  * リクエスト: { operatorCode, companyName, contactName, adminPassword }
  * レスポンス: { success: true, operator } | { error: string }
@@ -15,6 +17,8 @@ export default function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  if (!requireAdmin(req, res)) return;
 
   const { operatorCode, companyName, contactName, adminPassword } = req.body;
 

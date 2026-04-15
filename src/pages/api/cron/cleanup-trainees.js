@@ -1,5 +1,6 @@
 import fs from 'fs';
 import { getDataPath } from '../../../lib/dataPath';
+import { requireAdmin } from '../../../lib/auth';
 
 /**
  * 個人情報自動削除 API
@@ -187,8 +188,9 @@ export default function handler(req, res) {
     }
   }
 
-  // POST: 管理画面からの手動実行
+  // POST: 管理画面からの手動実行（管理者トークン必須）
   if (req.method === 'POST') {
+    if (!requireAdmin(req, res)) return;
     const { dryRun = false } = req.body || {};
     try {
       const result = runCleanup(Boolean(dryRun));

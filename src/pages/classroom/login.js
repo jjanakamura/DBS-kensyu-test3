@@ -37,6 +37,7 @@ export default function ClassroomLogin() {
           classroomCode: data.classroomCode,
           companyName: data.companyName,
           classroomName: data.classroomName,
+          classroomToken: data.classroomToken,
         });
         sessionStorage.setItem('classroomAuth', authData);
         localStorage.setItem('classroomAuth', authData);

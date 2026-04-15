@@ -1,9 +1,11 @@
 import fs from 'fs';
 import { getDataPath } from '../../lib/dataPath';
+import { getAuthScope } from '../../lib/auth';
 
 /**
  * 受講者ステータス更新 API
  * POST /api/update-trainee-status
+ * 認証: 管理者 / 事業者 / 教室トークン必須
  *
  * リクエスト: { id, status, notes }
  *   status: 'active' | 'retired' | 'suspended'
@@ -15,6 +17,9 @@ export default function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  const authScope = getAuthScope(req, res);
+  if (!authScope) return;
 
   const { id, status, notes } = req.body;
 

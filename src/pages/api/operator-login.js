@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { getDataPath } from '../../lib/dataPath';
 import { writeAccessLog } from '../../lib/accessLog';
+import { generateOperatorToken } from '../../lib/auth';
 
 /**
  * 事業者管理画面ログイン API
@@ -53,6 +54,7 @@ export default function handler(req, res) {
       success: true,
       operatorCode: operator.operatorCode,
       companyName: operator.companyName,
+      operatorToken: generateOperatorToken(operator.adminPassword),
     });
   } catch (err) {
     console.error('operator-login エラー:', err);
