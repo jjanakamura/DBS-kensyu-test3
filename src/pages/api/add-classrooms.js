@@ -1,9 +1,11 @@
 import fs from 'fs';
 import { getDataDir } from '../../lib/dataPath';
+import { getAuthScope } from '../../lib/auth';
 
 /**
  * 教室一括追加 API（CSV取込用）
  * POST /api/add-classrooms
+ * 認証: 管理者 / 事業者 / 教室トークン必須
  *
  * リクエスト: { operatorCode: string, classrooms: [{ classroomName: string }] }
  * レスポンス: { success: true, added: Classroom[], skipped: string[] }
@@ -16,7 +18,17 @@ export default function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const authScope = getAuthScope(req, res);
+  if (!authScope) return;
+
   const { operatorCode, classrooms: newClassrooms } = req.body;
+
+  // 管理者以外は自スコープ内のみ
+  if (authScope.scope !== 'admin' && operatorCode) {
+    if (String(operatorCode).toUpperCase() !== authScope.operatorCode) {
+      return res.status(403).json({ error: 'このデータへのアクセス権がありません。' });
+    }
+  }
 
   if (!operatorCode || !Array.isArray(newClassrooms) || newClassrooms.length === 0) {
     return res.status(400).json({ error: 'operatorCode と classrooms（配列）は必須です。' });

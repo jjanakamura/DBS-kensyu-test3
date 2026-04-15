@@ -58,12 +58,21 @@ export default function OperatorImport() {
     try {
       const res = await fetch('/api/add-classrooms', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-operator-token': auth.operatorToken || '',
+          'x-operator-code': auth.operatorCode || '',
+        },
         body: JSON.stringify({
           operatorCode: auth.operatorCode,
           classrooms: preview.map((name) => ({ classroomName: name })),
         }),
       });
+      if (res.status === 401) {
+        sessionStorage.removeItem('operatorAuth');
+        router.replace('/operator/login?expired=1');
+        return;
+      }
       const data = await res.json();
       if (data.success) {
         setResult(data);
