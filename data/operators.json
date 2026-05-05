@@ -68,5 +68,185 @@
     "status": "inactive",
     "registeredAt": "2025-10-15",
     "note": "退会済み（2026年3月）"
+  },
+  {
+    "operatorCode": "AAA",
+    "companyName": "aaa",
+    "adminPassword": "aaa",
+    "contactName": "aaa",
+    "contactEmail": "",
+    "status": "inactive",
+    "registeredAt": "2026-05-05",
+    "note": ""
+  },
+  {
+    "operatorCode": "C001",
+    "companyName": "株式会社サンプル",
+    "adminPassword": "sample2026",
+    "contactName": "山田太郎",
+    "contactEmail": "",
+    "status": "active",
+    "registeredAt": "2026-05-05",
+    "note": ""
+  },
+  {
+    "operatorCode": "C002",
+    "companyName": "株式会社サンプル",
+    "adminPassword": "sample2027",
+    "contactName": "ご担当者",
+    "contactEmail": "",
+    "status": "active",
+    "registeredAt": "2026-05-05",
+    "note": ""
+  },
+  {
+    "operatorCode": "C003",
+    "companyName": "株式会社サンプル",
+    "adminPassword": "sample2028",
+    "contactName": "ご担当者",
+    "contactEmail": "",
+    "status": "active",
+    "registeredAt": "2026-05-05",
+    "note": ""
+  },
+  {
+    "operatorCode": "C004",
+    "companyName": "株式会社サンプル",
+    "adminPassword": "sample2029",
+    "contactName": "ご担当者",
+    "contactEmail": "",
+    "status": "active",
+    "registeredAt": "2026-05-05",
+    "note": ""
+  },
+  {
+    "operatorCode": "C005",
+    "companyName": "株式会社サンプル",
+    "adminPassword": "sample2030",
+    "contactName": "ご担当者",
+    "contactEmail": "",
+    "status": "active",
+    "registeredAt": "2026-05-05",
+    "note": ""
+  },
+  {
+    "operatorCode": "C006",
+    "companyName": "株式会社サンプル",
+    "adminPassword": "sample2031",
+    "contactName": "ご担当者",
+    "contactEmail": "",
+    "status": "active",
+    "registeredAt": "2026-05-05",
+    "note": ""
+  },
+  {
+    "operatorCode": "C007",
+    "companyName": "株式会社サンプル",
+    "adminPassword": "sample2032",
+    "contactName": "ご担当者",
+    "contactEmail": "",
+    "status": "active",
+    "registeredAt": "2026-05-05",
+    "note": ""
+  },
+  {
+    "operatorCode": "C008",
+    "companyName": "株式会社サンプル",
+    "adminPassword": "sample2033",
+    "contactName": "ご担当者",
+    "contactEmail": "",
+    "status": "active",
+    "registeredAt": "2026-05-05",
+    "note": ""
+  },
+  {
+    "operatorCode": "C009",
+    "companyName": "株式会社サンプル",
+    "adminPassword": "sample2034",
+    "contactName": "ご担当者",
+    "contactEmail": "",
+    "status": "active",
+    "registeredAt": "2026-05-05",
+    "note": ""
+  },
+  {
+    "operatorCode": "C010",
+    "companyName": "株式会社サンプル",
+    "adminPassword": "sample2035",
+    "contactName": "ご担当者",
+    "contactEmail": "",
+    "status": "active",
+    "registeredAt": "2026-05-05",
+    "note": ""
+  },
+  {
+    "operatorCode": "C011",
+    "companyName": "株式会社サンプル",
+    "adminPassword": "sample2036",
+    "contactName": "ご担当者",
+    "contactEmail": "",
+    "status": "active",
+    "registeredAt": "2026-05-05",
+    "note": ""
+  },
+  {
+    "operatorCode": "C012",
+    "companyName": "株式会社サンプル",
+    "adminPassword": "sample2037",
+    "contactName": "ご担当者",
+    "contactEmail": "",
+    "status": "active",
+    "registeredAt": "2026-05-05",
+    "note": ""
+  },
+  {
+    "operatorCode": "C013",
+    "companyName": "株式会社サンプル",
+    "adminPassword": "sample2038",
+    "contactName": "ご担当者",
+    "contactEmail": "",
+    "status": "active",
+    "registeredAt": "2026-05-05",
+    "note": ""
+  },
+  {
+    "operatorCode": "C014",
+    "companyName": "株式会社サンプル",
+    "adminPassword": "sample2039",
+    "contactName": "ご担当者",
+    "contactEmail": "",
+    "status": "active",
+    "registeredAt": "2026-05-05",
+    "note": ""
+  },
+  {
+    "operatorCode": "C015",
+    "companyName": "株式会社サンプル",
+    "adminPassword": "sample2040",
+    "contactName": "ご担当者",
+    "contactEmail": "",
+    "status": "active",
+    "registeredAt": "2026-05-05",
+    "note": ""
+  },
+  {
+    "operatorCode": "C016",
+    "companyName": "株式会社サンプル",
+    "adminPassword": "sample2041",
+    "contactName": "ご担当者",
+    "contactEmail": "",
+    "status": "active",
+    "registeredAt": "2026-05-05",
+    "note": ""
+  },
+  {
+    "operatorCode": "C017",
+    "companyName": "株式会社サンプル",
+    "adminPassword": "sample2042",
+    "contactName": "ご担当者",
+    "contactEmail": "",
+    "status": "active",
+    "registeredAt": "2026-05-05",
+    "note": ""
   }
 ]

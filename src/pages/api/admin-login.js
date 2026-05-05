@@ -1,5 +1,6 @@
 import { writeAccessLog } from '../../lib/accessLog';
 import { generateAdminToken } from '../../lib/auth';
+import { checkRateLimit } from '../../lib/rateLimit';
 
 /**
  * 管理者ログイン API
@@ -7,33 +8,31 @@ import { generateAdminToken } from '../../lib/auth';
  *
  * パスワードは環境変数 ADMIN_PASSWORD で管理（ソースコードに書かない）
  * Vercel 管理画面 → Settings → Environment Variables → ADMIN_PASSWORD を設定すること
- *
- * リクエスト : { password: string }
- * レスポンス : { success: true } | { success: false, message: string }
  */
-export default function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!checkRateLimit(req, res, { key: 'admin-login', limit: 5, windowMs: 60_000 })) return;
 
   const { password } = req.body || {};
-
   if (!password) {
     return res.status(400).json({ success: false, message: 'パスワードを入力してください。' });
   }
 
-  // 環境変数からパスワードを取得（未設定時は開発用フォールバック）
   const adminPassword = process.env.ADMIN_PASSWORD;
   if (!adminPassword) {
-    console.warn('[admin-login] ADMIN_PASSWORD 環境変数が設定されていません。本番環境では必ず設定してください。');
+    console.error('[admin-login] ADMIN_PASSWORD が未設定です。');
+    await writeAccessLog({ type: 'admin', target: 'ADMIN', result: 'fail', reason: 'ADMIN_PASSWORD未設定', req });
+    return res.status(503).json({
+      success: false,
+      message: 'システム設定が不完全です。管理者へお問い合わせください。',
+    });
   }
-  const expected = adminPassword || 'admin2024';
 
-  if (password === expected) {
-    writeAccessLog({ type: 'admin', target: 'ADMIN', result: 'success', req });
+  if (password === adminPassword) {
+    await writeAccessLog({ type: 'admin', target: 'ADMIN', result: 'success', req });
     return res.status(200).json({ success: true, adminToken: generateAdminToken() });
   } else {
-    writeAccessLog({ type: 'admin', target: 'ADMIN', result: 'fail', reason: 'パスワード不正', req });
+    await writeAccessLog({ type: 'admin', target: 'ADMIN', result: 'fail', reason: 'パスワード不正', req });
     return res.status(200).json({ success: false, message: 'パスワードが正しくありません。' });
   }
 }

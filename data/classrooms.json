@@ -117,5 +117,273 @@
     "status": "inactive",
     "createdAt": "2025-10-15",
     "classroomPassword": "B002-HQ"
+  },
+  {
+    "classroomCode": "A001-C04",
+    "operatorCode": "A001",
+    "classroomName": "品川校",
+    "status": "active",
+    "createdAt": "2026-05-05",
+    "classroomPassword": "b3e4z8"
+  },
+  {
+    "classroomCode": "A001-C05",
+    "operatorCode": "A001",
+    "classroomName": "テスト1",
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "A001-C06",
+    "operatorCode": "A001",
+    "classroomName": "テスト2",
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "A001-C07",
+    "operatorCode": "A001",
+    "classroomName": "テスト3",
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "A001-C08",
+    "operatorCode": "A001",
+    "classroomName": "テスト4",
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "A001-C09",
+    "operatorCode": "A001",
+    "classroomName": "テスト5",
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "A001-C10",
+    "operatorCode": "A001",
+    "classroomName": "テスト6",
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "A001-C11",
+    "operatorCode": "A001",
+    "classroomName": "テスト7",
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "A001-C12",
+    "operatorCode": "A001",
+    "classroomName": "テスト8",
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "A001-C13",
+    "operatorCode": "A001",
+    "classroomName": "テスト9",
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "A001-C14",
+    "operatorCode": "A001",
+    "classroomName": "テスト10",
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "A001-C15",
+    "operatorCode": "A001",
+    "classroomName": "テスト11",
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "A001-C16",
+    "operatorCode": "A001",
+    "classroomName": "テスト12",
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "A001-C17",
+    "operatorCode": "A001",
+    "classroomName": "テスト13",
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "A001-C18",
+    "operatorCode": "A001",
+    "classroomName": "テスト14",
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "AAA-HQ",
+    "operatorCode": "AAA",
+    "classroomName": "本部",
+    "classroomPassword": "AAA-HQ",
+    "isHQ": true,
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "C001-HQ",
+    "operatorCode": "C001",
+    "classroomName": "本部",
+    "classroomPassword": "C001-HQ",
+    "isHQ": true,
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "C002-HQ",
+    "operatorCode": "C002",
+    "classroomName": "本部",
+    "classroomPassword": "C002-HQ",
+    "isHQ": true,
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "C003-HQ",
+    "operatorCode": "C003",
+    "classroomName": "本部",
+    "classroomPassword": "C003-HQ",
+    "isHQ": true,
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "C004-HQ",
+    "operatorCode": "C004",
+    "classroomName": "本部",
+    "classroomPassword": "C004-HQ",
+    "isHQ": true,
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "C005-HQ",
+    "operatorCode": "C005",
+    "classroomName": "本部",
+    "classroomPassword": "C005-HQ",
+    "isHQ": true,
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "C006-HQ",
+    "operatorCode": "C006",
+    "classroomName": "本部",
+    "classroomPassword": "C006-HQ",
+    "isHQ": true,
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "C007-HQ",
+    "operatorCode": "C007",
+    "classroomName": "本部",
+    "classroomPassword": "C007-HQ",
+    "isHQ": true,
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "C008-HQ",
+    "operatorCode": "C008",
+    "classroomName": "本部",
+    "classroomPassword": "C008-HQ",
+    "isHQ": true,
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "C009-HQ",
+    "operatorCode": "C009",
+    "classroomName": "本部",
+    "classroomPassword": "C009-HQ",
+    "isHQ": true,
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "C010-HQ",
+    "operatorCode": "C010",
+    "classroomName": "本部",
+    "classroomPassword": "C010-HQ",
+    "isHQ": true,
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "C011-HQ",
+    "operatorCode": "C011",
+    "classroomName": "本部",
+    "classroomPassword": "C011-HQ",
+    "isHQ": true,
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "C012-HQ",
+    "operatorCode": "C012",
+    "classroomName": "本部",
+    "classroomPassword": "C012-HQ",
+    "isHQ": true,
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "C013-HQ",
+    "operatorCode": "C013",
+    "classroomName": "本部",
+    "classroomPassword": "C013-HQ",
+    "isHQ": true,
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "C014-HQ",
+    "operatorCode": "C014",
+    "classroomName": "本部",
+    "classroomPassword": "C014-HQ",
+    "isHQ": true,
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "C015-HQ",
+    "operatorCode": "C015",
+    "classroomName": "本部",
+    "classroomPassword": "C015-HQ",
+    "isHQ": true,
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "C016-HQ",
+    "operatorCode": "C016",
+    "classroomName": "本部",
+    "classroomPassword": "C016-HQ",
+    "isHQ": true,
+    "status": "active",
+    "createdAt": "2026-05-05"
+  },
+  {
+    "classroomCode": "C017-HQ",
+    "operatorCode": "C017",
+    "classroomName": "本部",
+    "classroomPassword": "C017-HQ",
+    "isHQ": true,
+    "status": "active",
+    "createdAt": "2026-05-05"
   }
 ]

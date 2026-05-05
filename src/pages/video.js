@@ -9,14 +9,15 @@ import Layout from '../components/Layout';
  *   - 1秒ごとに getCurrentTime() をポーリングし、前回値との差分を計測
  *   - 差分が MAX_DELTA_PER_SEC (2.5秒) を超える場合は「早送り」とみなし加算しない
  *   - 差分 ≤ 2.5 → 通常再生 or 2倍速までは許容してカウント
- *   - 実視聴秒数が 動画尺 × MIN_WATCH_FRACTION (85%) に達したらボタン解除
+ *   - 実視聴秒数が 動画尺 × MIN_WATCH_FRACTION (95%) に達したらボタン解除
  *   - 進捗は sessionStorage に保存し、リロード後も引き継ぐ
  */
 
-const VIDEO_ID_GENERAL = '6h4PtePGsEw';
-const VIDEO_ID_MANAGER = '6h4PtePGsEw';
+// 研修動画のYouTube ID（正式版）
+const VIDEO_ID_GENERAL = 'SrbbEOVDmtg'; // 従事者向け研修
+const VIDEO_ID_MANAGER = 'VBlpKSpyVWY'; // 情報管理責任者向け研修
 
-const MIN_WATCH_FRACTION = 0.85; // 85%以上で解除
+const MIN_WATCH_FRACTION = 0.95; // 95%以上で解除
 const MAX_DELTA_PER_SEC  = 2.5;  // 1秒あたりこれ以上の進みは早送りとみなす（2倍速まで許容）
 
 export default function VideoPage() {
@@ -33,6 +34,34 @@ export default function VideoPage() {
   const playedSecsRef  = useRef(0);   // 累積実視聴秒（setStateより先に使うため ref）
   const videoDurRef    = useRef(0);
   const videoIdRef     = useRef('');
+  const completionNotifiedRef = useRef(false); // 95%到達時のサーバー通知を一度だけ実行
+
+  /** 95%到達時にサーバー側へ視聴完了を通知（改ざん耐性向上） */
+  const notifyCompletion = async () => {
+    if (completionNotifiedRef.current) return;
+    completionNotifiedRef.current = true;
+    try {
+      const t = JSON.parse(sessionStorage.getItem('trainee') || '{}');
+      await fetch('/api/video-complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operatorCode: t.operatorCode,
+          classroomCode: t.classroomCode,
+          companyName: t.companyName,
+          classroomName: t.classroomName,
+          fullName: t.fullName,
+          track: t.track,
+          videoId: videoIdRef.current,
+          watchedSeconds: playedSecsRef.current,
+          durationSeconds: videoDurRef.current,
+        }),
+      });
+    } catch (e) {
+      console.warn('video-complete 通知失敗:', e);
+      completionNotifiedRef.current = false; // 再試行可能にする
+    }
+  };
 
   useEffect(() => {
     const stored = sessionStorage.getItem('trainee');
@@ -62,7 +91,10 @@ export default function VideoPage() {
             if (dur > 0) {
               const pct = Math.min(100, Math.round(playedSecsRef.current / dur * 100));
               setWatchProgress(pct);
-              if (playedSecsRef.current >= dur * MIN_WATCH_FRACTION) setCanProceed(true);
+              if (playedSecsRef.current >= dur * MIN_WATCH_FRACTION) {
+                setCanProceed(true);
+                notifyCompletion();
+              }
             }
           },
 
@@ -87,7 +119,10 @@ export default function VideoPage() {
                   const pct = Math.min(100, Math.round(playedSecsRef.current / dur * 100));
                   setWatchProgress(pct);
                   sessionStorage.setItem(`videoPlayed_${videoIdRef.current}`, String(playedSecsRef.current));
-                  if (playedSecsRef.current >= dur * MIN_WATCH_FRACTION) setCanProceed(true);
+                  if (playedSecsRef.current >= dur * MIN_WATCH_FRACTION) {
+                    setCanProceed(true);
+                    notifyCompletion();
+                  }
                 }
               }, 1000);
 
@@ -100,7 +135,10 @@ export default function VideoPage() {
                 setPlayerState('ended');
                 // 終了時にも解除条件を再チェック（通常視聴ならここで通過する）
                 const dur = videoDurRef.current;
-                if (dur > 0 && playedSecsRef.current >= dur * MIN_WATCH_FRACTION) setCanProceed(true);
+                if (dur > 0 && playedSecsRef.current >= dur * MIN_WATCH_FRACTION) {
+                  setCanProceed(true);
+                  notifyCompletion();
+                }
               }
             }
           },
@@ -136,29 +174,13 @@ export default function VideoPage() {
   const courseConfig = isManager
     ? {
         title: '情報管理責任者研修動画の視聴',
-        videoTitle: 'こども性暴力防止法（日本版DBS）情報管理責任者研修',
+        videoTitle: 'こども性暴力防止法（日本版DBS）情報管理責任者向け研修',
         badge: { label: '情報管理責任者研修', cls: 'bg-amber-100 text-amber-800 border-amber-300' },
-        contents: [
-          '日本版DBS（こども性暴力防止法）の目的と概要',
-          '犯罪事実確認記録等の定義と取扱い上の義務',
-          '情報管理責任者の役割・権限と責任範囲',
-          '情報管理規程の策定・運用・PDCAサイクル',
-          '組織的・人的・物理的・技術的情報管理措置',
-          '情報漏えい発生時の報告義務と対応手順',
-          '廃棄・消去の適切な手続きと記録の保存',
-        ],
       }
     : {
         title: '研修動画の視聴',
-        videoTitle: 'こども性暴力防止法（日本版DBS）対応研修',
+        videoTitle: 'こども性暴力防止法（日本版DBS）従事者向け研修',
         badge: null,
-        contents: [
-          '日本版DBS（こども性暴力防止法）の目的と概要',
-          '確認申請の対象者（雇用形態を問わず子どもと接する全ての者）',
-          '申請のタイミングと手続きの流れ',
-          '義務不履行の場合の行政措置（改善命令・事業者名公表）',
-          '現場での実務対応ポイントとケーススタディ',
-        ],
       };
 
   // ---- ステータスメッセージ ----
@@ -175,7 +197,7 @@ export default function VideoPage() {
   };
   const status = statusMessage();
 
-  const needPct = Math.round(MIN_WATCH_FRACTION * 100); // 表示用 85
+  const needPct = Math.round(MIN_WATCH_FRACTION * 100); // 表示用 95
 
   return (
     <Layout title="研修動画">
@@ -233,7 +255,7 @@ export default function VideoPage() {
           </div>
           {/* 背景バー */}
           <div className="relative h-3 bg-gray-100 rounded-full overflow-hidden">
-            {/* 達成ライン（85%位置） */}
+            {/* 達成ライン（95%位置） */}
             <div
               className="absolute top-0 bottom-0 w-px bg-green-400 z-10"
               style={{ left: `${needPct}%` }}
@@ -254,19 +276,6 @@ export default function VideoPage() {
         {/* 視聴ステータス */}
         <div className={`border rounded-lg p-3 mb-5 text-sm ${status.cls}`}>
           {status.text}
-        </div>
-
-        {/* 研修内容サマリー */}
-        <div className="bg-white rounded-xl shadow-sm border border-green-200 p-5 mb-5">
-          <h3 className="text-sm font-bold text-gray-800 mb-3">研修内容</h3>
-          <ul className="space-y-2 text-sm text-gray-700">
-            {courseConfig.contents.map((item, i) => (
-              <li key={i} className="flex gap-2">
-                <span className="text-green-700 font-bold flex-shrink-0">●</span>
-                {item}
-              </li>
-            ))}
-          </ul>
         </div>
 
         {/* 次へボタン */}

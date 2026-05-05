@@ -137,8 +137,13 @@ export default function ClassroomLogin() {
             </p>
           </div>
 
+          {/* 案内（事業者本部の方） */}
+          <p className="mt-4 text-xs text-gray-500 text-center leading-relaxed">
+            事業者本部の方は <a href="/operator/login" className="text-green-700 underline font-medium">事業者本部ログイン</a> からアクセスしてください。
+          </p>
+
           {/* 受講者向け注意書き */}
-          <p className="mt-4 text-xs text-gray-400 text-center leading-relaxed">
+          <p className="mt-3 text-xs text-gray-400 text-center leading-relaxed">
             従事者として受講する場合はこちらのURLは使用しません。<br />
             教室長から届いた専用URLをご利用ください。
           </p>

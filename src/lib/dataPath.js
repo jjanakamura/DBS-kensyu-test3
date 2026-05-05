@@ -2,6 +2,43 @@ import path from 'path';
 import fs from 'fs';
 
 /**
+ * 取り扱うデータファイル名のホワイトリスト
+ * 仮にAPI呼び出し側でユーザー入力をそのまま渡されても、
+ * 列挙されたファイル以外は処理させない。
+ */
+const ALLOWED_FILES = new Set([
+  'operators.json',
+  'classrooms.json',
+  'trainees.json',
+  'records.json',
+  'members.json',
+  'questions.json',
+  'questions_manager.json',
+  'access-log.json',
+  'cleanup-log.json',
+]);
+
+/**
+ * ファイル名をサニタイズし、ホワイトリストと照合する。
+ * basename だけを抜き出すことでディレクトリトラバーサル
+ * （例: "../../etc/passwd"）を排除する。
+ */
+function sanitizeFilename(filename) {
+  if (typeof filename !== 'string' || !filename) {
+    throw new Error('Invalid data file: filename is required');
+  }
+  const baseName = path.basename(filename);
+  // パス区切り文字や ".." を含む場合は拒否
+  if (baseName !== filename || baseName.includes('..') || baseName.includes('/') || baseName.includes('\\')) {
+    throw new Error(`Invalid data file: ${filename}`);
+  }
+  if (!ALLOWED_FILES.has(baseName)) {
+    throw new Error(`Data file not allowed: ${baseName}`);
+  }
+  return baseName;
+}
+
+/**
  * データファイルのパスを解決するユーティリティ
  *
  * - ローカル環境: プロジェクトルートの data/ ディレクトリを使用
@@ -12,15 +49,16 @@ import fs from 'fs';
  * @returns {string} 絶対パス
  */
 export function getDataPath(filename) {
+  const safeName = sanitizeFilename(filename);
   const isVercel = process.env.VERCEL === '1';
 
   if (!isVercel) {
-    return path.join(process.cwd(), 'data', filename);
+    return path.join(process.cwd(), 'data', safeName);
   }
 
   // Vercel: /tmp/data/ を使用
   const tmpDir = '/tmp/data';
-  const tmpFilePath = path.join(tmpDir, filename);
+  const tmpFilePath = path.join(tmpDir, safeName);
 
   // ディレクトリがなければ作成
   if (!fs.existsSync(tmpDir)) {
@@ -29,7 +67,7 @@ export function getDataPath(filename) {
 
   // /tmp にファイルがなければ初期データをコピー
   if (!fs.existsSync(tmpFilePath)) {
-    const srcPath = path.join(process.cwd(), 'data', filename);
+    const srcPath = path.join(process.cwd(), 'data', safeName);
     if (fs.existsSync(srcPath)) {
       fs.copyFileSync(srcPath, tmpFilePath);
     } else {

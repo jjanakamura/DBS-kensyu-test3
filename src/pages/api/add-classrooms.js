@@ -1,5 +1,4 @@
-import fs from 'fs';
-import { getDataDir } from '../../lib/dataPath';
+import { listClassrooms, getMaxClassroomNumber, bulkInsertClassrooms } from '../../lib/db';
 import { getAuthScope } from '../../lib/auth';
 
 /**
@@ -7,91 +6,62 @@ import { getAuthScope } from '../../lib/auth';
  * POST /api/add-classrooms
  * 認証: 管理者 / 事業者 / 教室トークン必須
  *
- * リクエスト: { operatorCode: string, classrooms: [{ classroomName: string }] }
- * レスポンス: { success: true, added: Classroom[], skipped: string[] }
- *
  * 教室コードは自動採番: {operatorCode}-C{01,02,...}
- * ※ HQコード（{operatorCode}-HQ）は本部専用として自動管理。CSVからは追加不可。
  */
-export default function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const authScope = getAuthScope(req, res);
+  const authScope = await getAuthScope(req, res);
   if (!authScope) return;
 
   const { operatorCode, classrooms: newClassrooms } = req.body;
-
-  // 管理者以外は自スコープ内のみ
   if (authScope.scope !== 'admin' && operatorCode) {
     if (String(operatorCode).toUpperCase() !== authScope.operatorCode) {
       return res.status(403).json({ error: 'このデータへのアクセス権がありません。' });
     }
   }
-
   if (!operatorCode || !Array.isArray(newClassrooms) || newClassrooms.length === 0) {
     return res.status(400).json({ error: 'operatorCode と classrooms（配列）は必須です。' });
   }
 
   try {
-    const dataDir = getDataDir();
-    const filePath = `${dataDir}/classrooms.json`;
-
-    let classrooms = [];
-    if (fs.existsSync(filePath)) {
-      classrooms = JSON.parse(fs.readFileSync(filePath, 'utf-8') || '[]');
-    }
-
-    const normalizedOpCode = operatorCode.trim().toUpperCase();
-
-    // 既存の C-番号の最大値を取得（HQは除く）
-    const existing = classrooms.filter(
-      (c) => c.operatorCode.trim().toUpperCase() === normalizedOpCode && !c.isHQ
-    );
-    let maxNum = 0;
-    existing.forEach((c) => {
-      const match = c.classroomCode.match(/-C(\d+)$/);
-      if (match) maxNum = Math.max(maxNum, parseInt(match[1], 10));
-    });
+    const opCode = String(operatorCode).trim().toUpperCase();
+    const existing = await listClassrooms({ operatorCode: opCode });
+    let maxNum = await getMaxClassroomNumber(opCode);
 
     const added = [];
     const skipped = [];
     const today = new Date().toISOString().slice(0, 10);
+    const toInsert = [];
 
-    newClassrooms.forEach((item) => {
+    for (const item of newClassrooms) {
       const name = (item.classroomName || '').trim();
-      if (!name) { skipped.push('（空欄）'); return; }
-
-      // 「本部」という名前はCSVから追加不可（HQで管理）
-      if (name === '本部' || name === '本社' || name === '事務局') {
+      if (!name) { skipped.push('（空欄）'); continue; }
+      if (['本部', '本社', '事務局'].includes(name)) {
         skipped.push(`${name}（本部専用URLをご利用ください）`);
-        return;
+        continue;
       }
-
-      // 同一事業者に同名教室が既にある場合はスキップ
-      const duplicate = classrooms.find(
-        (c) =>
-          c.operatorCode.trim().toUpperCase() === normalizedOpCode &&
-          c.classroomName === name
-      );
-      if (duplicate) { skipped.push(name); return; }
+      const duplicate = existing.find((c) => c.classroomName === name);
+      if (duplicate) { skipped.push(name); continue; }
 
       maxNum += 1;
-      const classroomCode = `${normalizedOpCode}-C${String(maxNum).padStart(2, '0')}`;
-      const newEntry = {
+      const classroomCode = `${opCode}-C${String(maxNum).padStart(2, '0')}`;
+      const entry = {
         classroomCode,
-        operatorCode: normalizedOpCode,
+        operatorCode: opCode,
         classroomName: name,
+        classroomPassword: classroomCode, // 初期パスワードは教室コードと同じ
+        isHQ: false,
         status: 'active',
         createdAt: today,
       };
-      classrooms.push(newEntry);
-      added.push(newEntry);
-    });
+      toInsert.push(entry);
+      added.push(entry);
+    }
 
-    fs.writeFileSync(filePath, JSON.stringify(classrooms, null, 2), 'utf-8');
-
+    if (toInsert.length > 0) {
+      await bulkInsertClassrooms(toInsert);
+    }
     return res.status(200).json({ success: true, added, skipped });
   } catch (err) {
     console.error('add-classrooms エラー:', err);

@@ -1,33 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
+import ScrollableTable from '../../components/ScrollableTable';
 import dynamic from 'next/dynamic';
+import { calcExpiry, calcRemainingDays } from '../../lib/expiry';
+import { downloadCsv } from '../../lib/csv';
 const QRCodeCanvas = dynamic(() => import('qrcode.react').then(m => m.QRCodeCanvas), { ssr: false });
 
 /**
  * 教室管理者ダッシュボード
  * - タブ①受講記録  ②受講者管理
  * - sessionStorage の classroomAuth を用いた認証ガード
+ *
+ * 有効期限・残日数は src/lib/expiry.js を経由（民法準拠）
  */
-
-// 修了日から有効期限（1年後）を計算
-function calcExpiry(completionDate) {
-  if (!completionDate) return null;
-  const m = completionDate.match(/(\d+)年(\d+)月(\d+)日/);
-  if (!m) return null;
-  return `${parseInt(m[1]) + 1}年${m[2]}月${m[3]}日`;
-}
-
-function calcRemainingDays(completionDate) {
-  const expiry = calcExpiry(completionDate);
-  if (!expiry) return null;
-  const m = expiry.match(/(\d+)年(\d+)月(\d+)日/);
-  if (!m) return null;
-  const expiryDate = new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
-}
 
 function RemainingBadge({ days }) {
   if (days === null || days === undefined) return <span className="text-gray-300">—</span>;
@@ -269,6 +255,19 @@ export default function ClassroomDashboard() {
       ? Math.round((passedRecords.length / records.length) * 100)
       : 0;
 
+  // 合格済みの人物（事業者コード+氏名）の集合
+  const passedPersonKeys = new Set(
+    passedRecords.map((r) => `${r.operatorCode || r.memberCode || ''}|${r.fullName || ''}`)
+  );
+
+  // 表示用：合格者がいる人物の不合格レコードを非表示にする
+  // （合格すれば過去の不合格挑戦は履歴から消える＝管理がシンプルになる）
+  const displayRecords = records.filter((r) => {
+    if (r.passed) return true; // 合格レコードは常に表示
+    const key = `${r.operatorCode || r.memberCode || ''}|${r.fullName || ''}`;
+    return !passedPersonKeys.has(key); // 合格未済の人の不合格のみ表示
+  });
+
   // 有効期限が30日以内に迫っている在籍中受講者（警告バナー用）
   const expiringTrainees = trainees
     .filter((t) => t.status === 'active')
@@ -296,23 +295,19 @@ export default function ClassroomDashboard() {
     return raw.replace('T', ' ').slice(0, 16);
   };
 
-  // ── CSV出力ヘルパー ───────────────────────────────────────────
-  const downloadCsv = (filename, rows) => {
-    const BOM = '\uFEFF';
-    const csv = BOM + rows.map(r => r.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename; a.click();
-    URL.revokeObjectURL(url);
-  };
+  // CSV出力は src/lib/csv.js の downloadCsv を使用（RFC 4180準拠・改行/カンマ対応）
 
   const exportCsv = (filterMode) => {
     // filterMode: 'all' | 'passed' | 'failed'
-    let filtered = records;
+    // 表示と同じロジック（合格者の過去の不合格は除外）
+    let filtered = displayRecords;
     let label = '全件';
-    if (filterMode === 'passed') { filtered = records.filter(r => r.passed); label = '合格'; }
-    if (filterMode === 'failed') { filtered = records.filter(r => !r.passed); label = '不合格'; }
+    if (filterMode === 'passed') { filtered = passedRecords; label = '合格'; }
+    if (filterMode === 'failed') {
+      // 「不合格」CSV では合格未済の人の不合格のみ
+      filtered = displayRecords.filter(r => !r.passed);
+      label = '不合格';
+    }
 
     const auth = JSON.parse(sessionStorage.getItem('classroomAuth') || localStorage.getItem('classroomAuth') || '{}');
     const filename = `受講記録_${auth.classroomName || ''}_${label}_${new Date().toISOString().slice(0,10)}.csv`;
@@ -325,7 +320,7 @@ export default function ClassroomDashboard() {
       return [
         r.submittedAt ? new Date(r.submittedAt).toLocaleString('ja-JP') : '',
         r.fullName || '',
-        r.track === 'manager' ? '情報管理責任者研修' : '一般研修',
+        r.track === 'manager' ? '情報管理責任者向け研修' : '従事者向け研修',
         r.score ?? '',
         r.passed ? '合格' : '不合格',
         r.completionDate || '',
@@ -507,7 +502,7 @@ export default function ClassroomDashboard() {
               <p className="text-sm">受講記録がまだありません</p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-green-100 shadow-sm">
+            <ScrollableTable className="rounded-xl border border-green-100 shadow-sm overflow-hidden">
               <table className="min-w-full text-sm bg-white">
                 <thead>
                   <tr className="bg-green-700 text-white">
@@ -519,7 +514,7 @@ export default function ClassroomDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {records.map((r, i) => {
+                  {displayRecords.map((r, i) => {
                     const passed = !!r.passed;
                     return (
                       <tr
@@ -535,7 +530,7 @@ export default function ClassroomDashboard() {
                         <td className="px-3 py-2.5 whitespace-nowrap">
                           {r.track === 'manager'
                             ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">情報管理</span>
-                            : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">一般</span>
+                            : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">従事者向け</span>
                           }
                         </td>
                         <td className="px-3 py-2.5 text-center font-mono text-gray-800">
@@ -597,7 +592,7 @@ export default function ClassroomDashboard() {
                   })}
                 </tbody>
               </table>
-            </div>
+            </ScrollableTable>
           )}
         </div>
       )}
@@ -619,7 +614,7 @@ export default function ClassroomDashboard() {
                     const trackParam = t.track === 'manager' ? '&track=manager' : '';
                     return [
                       t.fullName || '',
-                      t.track === 'manager' ? '情報管理責任者研修' : '一般研修',
+                      t.track === 'manager' ? '情報管理責任者向け研修' : '従事者向け研修',
                       t.status === 'active' ? '在籍中' : t.status === 'retired' ? '退職済' : '停止中',
                       lp ? (calcExpiry(lp.completionDate) || '') : '',
                       `${base}/register?biz=${auth.operatorCode}&cls=${auth.classroomCode}${trackParam}`,
@@ -642,11 +637,11 @@ export default function ClassroomDashboard() {
               <p className="text-sm">受講者が登録されていません</p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-green-100 shadow-sm">
+            <ScrollableTable className="rounded-xl border border-green-100 shadow-sm overflow-hidden">
               <table className="min-w-full text-sm bg-white">
                 <thead>
                   <tr className="bg-green-700 text-white">
-                    {['氏名', '研修種別', 'ステータス', '最終受講日', '有効期限', '操作'].map((h) => (
+                    {['氏名', '研修種別', '受講状況', 'ステータス', '最終受講日', '有効期限', '操作'].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold whitespace-nowrap">
                         {h}
                       </th>
@@ -656,6 +651,12 @@ export default function ClassroomDashboard() {
                 <tbody>
                   {trainees.map((t, i) => {
                     const statusKey = t.status || 'active';
+                    // 受講状況の算出（合格 / 不合格n回 / 未受講）
+                    const personRecords = records.filter(
+                      (r) => (r.operatorCode || r.memberCode) === t.operatorCode && r.fullName === t.fullName
+                    );
+                    const hasPassed = personRecords.some((r) => r.passed);
+                    const failedCount = personRecords.filter((r) => !r.passed).length;
                     return (
                       <tr
                         key={t.id || i}
@@ -667,8 +668,19 @@ export default function ClassroomDashboard() {
                         <td className="px-4 py-3 whitespace-nowrap">
                           {t.track === 'manager'
                             ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">情報管理</span>
-                            : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">一般</span>
+                            : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">従事者向け</span>
                           }
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {hasPassed ? (
+                            <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-800 border border-green-300">合格</span>
+                          ) : failedCount > 0 ? (
+                            <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-300">
+                              不合格（{failedCount}回）
+                            </span>
+                          ) : (
+                            <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-300">未受講</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full ${STATUS_COLOR[statusKey] || STATUS_COLOR.active}`}>
@@ -732,7 +744,7 @@ export default function ClassroomDashboard() {
                   })}
                 </tbody>
               </table>
-            </div>
+            </ScrollableTable>
           )}
         </div>
       )}
@@ -997,10 +1009,17 @@ export default function ClassroomDashboard() {
                 fgColor="#000000"
               />
             </div>
-            <p className="text-xs text-gray-400 break-all mb-4 bg-gray-50 rounded p-2 text-left">
+            <p className="text-xs text-gray-400 break-all mb-3 bg-gray-50 rounded p-2 text-left">
               {typeof window !== 'undefined' ? `${window.location.origin}/register?biz=${auth.operatorCode}&cls=${auth.classroomCode}` : ''}
             </p>
-            <p className="text-xs text-gray-500 mb-4">このQRコードを印刷・配布すると、スタッフがスマホで受講を開始できます。</p>
+            <p className="text-xs text-gray-500 mb-2">このQRコードを印刷・配布すると、スタッフがスマホで受講を開始できます。</p>
+            {typeof window !== 'undefined' && /^https?:\/\/(localhost|127\.|192\.168|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(window.location.origin) && (
+              <div className="text-xs bg-amber-50 border border-amber-200 rounded p-2 text-left text-amber-900 mb-4">
+                <p className="font-semibold mb-1">⚠️ 開発環境用URLです</p>
+                <p>「localhost」のままだとスマホからは開けません。<br />
+                本番リリース後（公開URL）に発行されたQRコードを配布してください。</p>
+              </div>
+            )}
             <div className="flex gap-2">
               <button
                 onClick={() => {

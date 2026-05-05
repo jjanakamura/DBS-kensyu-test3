@@ -2,3 +2,19 @@ node_modules/
 .next/
 
 .vercel
+
+# 環境変数（パスワード・APIキー等）
+.env
+.env.*
+!.env.example
+
+# 個人情報を含むデータファイル（個別指定）
+# ※ questions*.json は静的なテスト問題データなので含める
+data/operators.json
+data/classrooms.json
+data/trainees.json
+data/records.json
+data/members.json
+data/access-log.json
+data/cleanup-log.json
+data/*.backup

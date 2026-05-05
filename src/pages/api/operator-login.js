@@ -1,60 +1,47 @@
-import fs from 'fs';
-import { getDataPath } from '../../lib/dataPath';
+import { getOperator } from '../../lib/db';
 import { writeAccessLog } from '../../lib/accessLog';
 import { generateOperatorToken } from '../../lib/auth';
+import { checkRateLimit } from '../../lib/rateLimit';
 
 /**
  * 事業者管理画面ログイン API
  * POST /api/operator-login
- *
- * リクエスト: { operatorCode: string, password: string }
- * レスポンス:
- *   { success: true, operatorCode, companyName }  // 認証成功
- *   { success: false, message: string }            // 認証失敗
- *
- * ※ 試作版: パスワードは平文でoperators.jsonに保存。本番ではハッシュ化必須。
  */
-export default function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!checkRateLimit(req, res, { key: 'operator-login', limit: 10, windowMs: 60_000 })) return;
 
   const { operatorCode, password } = req.body;
-
   if (!operatorCode || !password) {
     return res.status(400).json({ success: false, message: '事業者コードとパスワードを入力してください。' });
   }
 
   try {
-    const filePath = getDataPath('operators.json');
-    const operators = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    const op = await getOperator(operatorCode);
+    const normalized = String(operatorCode).trim().toUpperCase();
 
-    const normalizedCode = operatorCode.trim().toUpperCase();
-    const operator = operators.find(
-      (o) => o.operatorCode.trim().toUpperCase() === normalizedCode
-    );
-
-    if (!operator) {
-      writeAccessLog({ type: 'operator', target: normalizedCode, result: 'fail', reason: 'コード不存在', req });
+    if (!op) {
+      await writeAccessLog({ type: 'operator', target: normalized, result: 'fail', reason: 'コード不存在', req });
       return res.status(200).json({ success: false, message: '事業者コードが見つかりません。' });
     }
-
-    if (operator.status === 'inactive') {
-      writeAccessLog({ type: 'operator', target: normalizedCode, result: 'fail', reason: 'アカウント停止中', req });
-      return res.status(200).json({ success: false, message: 'このアカウントは現在停止されています。事務局にお問い合わせください。' });
+    if (op.status === 'inactive') {
+      await writeAccessLog({ type: 'operator', target: normalized, result: 'fail', reason: 'アカウント停止中', req });
+      return res.status(200).json({
+        success: false,
+        message: 'このアカウントは現在停止されています。事務局にお問い合わせください。',
+      });
     }
-
-    if (operator.adminPassword !== password) {
-      writeAccessLog({ type: 'operator', target: normalizedCode, result: 'fail', reason: 'パスワード不正', req });
+    if (op.adminPassword !== password) {
+      await writeAccessLog({ type: 'operator', target: normalized, result: 'fail', reason: 'パスワード不正', req });
       return res.status(200).json({ success: false, message: 'パスワードが正しくありません。' });
     }
 
-    writeAccessLog({ type: 'operator', target: normalizedCode, result: 'success', req });
+    await writeAccessLog({ type: 'operator', target: normalized, result: 'success', req });
     return res.status(200).json({
       success: true,
-      operatorCode: operator.operatorCode,
-      companyName: operator.companyName,
-      operatorToken: generateOperatorToken(operator.adminPassword),
+      operatorCode: op.operatorCode,
+      companyName: op.companyName,
+      operatorToken: generateOperatorToken(op.adminPassword),
     });
   } catch (err) {
     console.error('operator-login エラー:', err);

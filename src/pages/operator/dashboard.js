@@ -1,31 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
+import ScrollableTable from '../../components/ScrollableTable';
 import dynamic from 'next/dynamic';
+import { calcExpiry, calcRemainingDays } from '../../lib/expiry';
+import { downloadCsv } from '../../lib/csv';
 const QRCodeCanvas = dynamic(() => import('qrcode.react').then(m => m.QRCodeCanvas), { ssr: false });
 
 /**
  * 事業者管理ダッシュボード
  * /operator/dashboard
+ *
+ * 有効期限・残日数は src/lib/expiry.js を経由（民法準拠）
  */
-
-function calcExpiry(completionDate) {
-  if (!completionDate) return null;
-  const m = completionDate.match(/(\d+)年(\d+)月(\d+)日/);
-  if (!m) return null;
-  return `${parseInt(m[1]) + 1}年${m[2]}月${m[3]}日`;
-}
-
-function calcRemainingDays(completionDate) {
-  const expiry = calcExpiry(completionDate);
-  if (!expiry) return null;
-  const m = expiry.match(/(\d+)年(\d+)月(\d+)日/);
-  if (!m) return null;
-  const expiryDate = new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
-}
 
 function RemainingBadge({ days }) {
   if (days === null || days === undefined) return <span className="text-gray-300">—</span>;
@@ -46,6 +33,8 @@ export default function OperatorDashboard() {
   // 受講者管理フィルタ
   const [traineeSearch, setTraineeSearch] = useState('');
   const [showRetired, setShowRetired] = useState(false);
+  const [trackFilter, setTrackFilter] = useState('all'); // 'all' | 'general' | 'manager'
+  const [classroomFilter, setClassroomFilter] = useState('all'); // 'all' | 教室コード
 
   // CSV出力
   const [csvClassroom, setCsvClassroom] = useState('');
@@ -225,6 +214,8 @@ export default function OperatorDashboard() {
   // 受講者フィルタ
   const filteredTrainees = trainees
     .filter((t) => showRetired ? true : t.status !== 'retired')
+    .filter((t) => trackFilter === 'all' ? true : (t.track || 'general') === trackFilter)
+    .filter((t) => classroomFilter === 'all' ? true : t.classroomCode === classroomFilter)
     .filter((t) => {
       if (!traineeSearch) return true;
       const s = traineeSearch.toLowerCase();
@@ -289,39 +280,40 @@ export default function OperatorDashboard() {
     else setSelectedClassrooms(new Set(classrooms.map((c) => c.classroomCode)));
   };
 
-  // 受講記録：選択教室でフィルタ
-  const displayedRecords = selectedClassrooms.size > 0
-    ? records.filter((r) => selectedClassrooms.has(r.classroomCode))
-    : records;
+  // 合格者の過去の不合格レコードを非表示にするための事前計算
+  const passedPersonKeys = new Set(
+    records
+      .filter((r) => r.passed)
+      .map((r) => `${r.operatorCode || r.memberCode || ''}|${r.fullName || ''}`)
+  );
+  // 表示対象：合格レコード or（同人物に合格レコードが無い）不合格レコード
+  const visibleRecords = records.filter((r) => {
+    if (r.passed) return true;
+    const key = `${r.operatorCode || r.memberCode || ''}|${r.fullName || ''}`;
+    return !passedPersonKeys.has(key);
+  });
 
-  // CSV出力ユーティリティ
-  const downloadCsv = (filename, rows) => {
-    const BOM = '\uFEFF';
-    const csv = BOM + rows
-      .map((r) => r.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
-      .join('\r\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  // 受講記録：選択教室でフィルタ（合格者の不合格は除外済みのvisibleRecordsを使用）
+  const displayedRecords = selectedClassrooms.size > 0
+    ? visibleRecords.filter((r) => selectedClassrooms.has(r.classroomCode))
+    : visibleRecords;
+
+  // CSV出力は src/lib/csv.js の downloadCsv を使用（RFC 4180準拠・改行/カンマ対応）
 
   const exportRecordsCsv = (filter) => {
     // filter: '' = 全体 / string = 単一教室コード / Set = 複数教室
+    // visibleRecords を起点にすることで、合格者の過去の不合格を含めない
     const statusMap = { active: '在籍中', retired: '退職済', suspended: '停止中' };
     let filtered;
     let label;
     if (!filter || (filter instanceof Set && filter.size === 0)) {
-      filtered = records;
+      filtered = visibleRecords;
       label = '全体';
     } else if (filter instanceof Set) {
-      filtered = records.filter((r) => filter.has(r.classroomCode));
+      filtered = visibleRecords.filter((r) => filter.has(r.classroomCode));
       label = `選択${filter.size}教室`;
     } else {
-      filtered = records.filter((r) => r.classroomCode === filter);
+      filtered = visibleRecords.filter((r) => r.classroomCode === filter);
       label = filter;
     }
     const base = typeof window !== 'undefined' ? window.location.origin : '';
@@ -340,7 +332,7 @@ export default function OperatorDashboard() {
         r.classroomCode || '',
         r.classroomName || '',
         r.fullName || '',
-        r.track === 'manager' ? '情報管理責任者研修' : '一般研修',
+        r.track === 'manager' ? '情報管理責任者向け研修' : '従事者向け研修',
         r.score != null ? `${r.score}%` : '',
         r.passed ? '合格' : '不合格',
         r.completionDate || '',
@@ -368,7 +360,7 @@ export default function OperatorDashboard() {
       return [
         t.fullName || '',
         t.classroomName || '',
-        t.track === 'manager' ? '情報管理責任者研修' : '一般研修',
+        t.track === 'manager' ? '情報管理責任者向け研修' : '従事者向け研修',
         statusMap[t.status] || t.status || '',
         expiry || '',
         remaining !== '' && remaining !== null ? `${remaining}日` : '',
@@ -399,11 +391,14 @@ export default function OperatorDashboard() {
     }, [])
     .sort((a, b) => a.remaining - b.remaining);
 
-  const hqClassroom = classrooms.find((c) => c.isHQ);
-  const hqUrl = hqClassroom
-    ? `${getBaseUrl()}/register?biz=${auth.operatorCode}&cls=${hqClassroom.classroomCode}`
+  // 本部教室（isHQ=true で識別）から本部用・情報管理責任者向けURLを生成
+  const headquartersClassroom = classrooms.find((c) => c.isHQ);
+  const hqUrl = headquartersClassroom
+    ? `${getBaseUrl()}/register?biz=${auth.operatorCode}&cls=${headquartersClassroom.classroomCode}`
     : `${getBaseUrl()}/register?biz=${auth.operatorCode}`;
-  const managerUrl = `${getBaseUrl()}/register?biz=${auth.operatorCode}&cls=${auth.operatorCode}-HQ&track=manager`;
+  const managerUrl = headquartersClassroom
+    ? `${getBaseUrl()}/register?biz=${auth.operatorCode}&cls=${headquartersClassroom.classroomCode}&track=manager`
+    : `${getBaseUrl()}/register?biz=${auth.operatorCode}&track=manager`;
 
   return (
     <Layout title="事業者管理画面">
@@ -465,16 +460,16 @@ export default function OperatorDashboard() {
           </div>
         )}
 
-        {/* 本部スタッフ向けURL + 情報管理責任者URL */}
+        {/* 本部経由の受講URL（従事者向け / 情報管理責任者向け） */}
         <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2">
-          {/* 本部スタッフ向け一般研修URL */}
+          {/* 本部所属者の従事者向け研修URL */}
           <div className="bg-green-50 border border-green-300 rounded-xl px-5 py-4 flex flex-col gap-3">
             <div>
-              <p className="text-sm font-bold text-green-800 mb-0.5">🏢 本部スタッフ向け受講URL</p>
-              <p className="text-xs text-green-700">教室に所属しない本部・事務局スタッフ（一般研修）はこちらのURLから受講できます。</p>
+              <p className="text-sm font-bold text-green-800 mb-0.5">🏢 本部所属者の従事者向け研修URL</p>
+              <p className="text-xs text-green-700">本部所属で従事者向け研修を受講する方はこちらのURLからどうぞ。</p>
               <p className="text-xs font-mono text-green-600 mt-1 break-all">{hqUrl}</p>
             </div>
-            <HqCopyButton url={hqUrl} label="本部URLをコピー" />
+            <HqCopyButton url={hqUrl} label="従事者向けURLをコピー" />
           </div>
 
           {/* 情報管理責任者向け研修URL */}
@@ -729,7 +724,7 @@ export default function OperatorDashboard() {
               </div>
             ) : (
               <div className="bg-white rounded-xl shadow-sm border border-green-200 overflow-hidden">
-                <div className="overflow-x-auto">
+                <ScrollableTable>
                   <table className="min-w-full text-sm">
                     <thead className="bg-green-50 border-b border-green-200">
                       <tr>
@@ -758,7 +753,7 @@ export default function OperatorDashboard() {
                           <td className="px-4 py-3 text-center">
                             {r.track === 'manager'
                               ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">情報管理</span>
-                              : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">一般</span>
+                              : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">従事者向け</span>
                             }
                           </td>
                           <td className="px-4 py-3 text-center">
@@ -799,7 +794,7 @@ export default function OperatorDashboard() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </ScrollableTable>
                 <div className="px-4 py-2 border-t border-green-100 bg-green-50 text-xs text-gray-400 text-right">
                   {displayedRecords.length} 件{selectedClassrooms.size > 0 && `（全 ${records.length} 件中）`}
                 </div>
@@ -821,6 +816,35 @@ export default function OperatorDashboard() {
               <input type="text" value={traineeSearch} onChange={(e) => setTraineeSearch(e.target.value)}
                 placeholder="氏名・教室名で検索..."
                 className="flex-1 min-w-48 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              {/* 研修種別 */}
+              <div className="flex gap-1">
+                {[
+                  { val: 'all', label: 'すべての研修' },
+                  { val: 'general', label: '従事者向け' },
+                  { val: 'manager', label: '情報管理責任者' },
+                ].map((f) => (
+                  <button
+                    key={f.val}
+                    onClick={() => setTrackFilter(f.val)}
+                    className={`px-3 py-2 text-xs rounded-lg border transition-colors whitespace-nowrap ${trackFilter === f.val ? 'bg-green-800 text-white border-green-800' : 'bg-white text-gray-600 border-gray-300 hover:bg-green-50'}`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+              {/* 教室絞り込み */}
+              <select
+                value={classroomFilter}
+                onChange={(e) => setClassroomFilter(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="all">全教室</option>
+                {classrooms.map((c) => (
+                  <option key={c.classroomCode} value={c.classroomCode}>
+                    {c.classroomName}（{c.classroomCode}）
+                  </option>
+                ))}
+              </select>
               <label className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 select-none">
                 <input type="checkbox" checked={showRetired} onChange={(e) => setShowRetired(e.target.checked)}
                   className="w-4 h-4 accent-gray-600" />
@@ -844,7 +868,7 @@ export default function OperatorDashboard() {
               </div>
             ) : (
               <div className="bg-white rounded-xl shadow-sm border border-green-200 overflow-hidden">
-                <div className="overflow-x-auto">
+                <ScrollableTable>
                   <table className="min-w-full text-sm">
                     <thead className="bg-green-50 border-b border-green-200">
                       <tr>
@@ -873,7 +897,7 @@ export default function OperatorDashboard() {
                           <td className="px-4 py-3 text-center">
                             {t.track === 'manager'
                               ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">情報管理</span>
-                              : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">一般</span>
+                              : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">従事者向け</span>
                             }
                           </td>
                           <td className="px-4 py-3 text-center">
@@ -929,7 +953,7 @@ export default function OperatorDashboard() {
                       })}
                     </tbody>
                   </table>
-                </div>
+                </ScrollableTable>
                 <div className="px-4 py-2 border-t border-green-100 bg-green-50 text-xs text-gray-400 text-right">
                   {filteredTrainees.length} 件表示（全 {trainees.length} 件）
                 </div>
@@ -940,7 +964,7 @@ export default function OperatorDashboard() {
 
         {/* 修了証再発行 */}
         {!loading && activeTab === 'certificates' && (
-          <CertificatesTab records={records.filter((r) => r.passed)} />
+          <CertificatesTab records={records.filter((r) => r.passed)} classrooms={classrooms} />
         )}
       </div>
 
@@ -1179,51 +1203,115 @@ function UrlCopyButton({ onClick }) {
   );
 }
 
-// 修了証再発行タブ
-function CertificatesTab({ records }) {
+// 修了証再発行タブ（教室絞り込み・研修種別フィルタ付き）
+function CertificatesTab({ records, classrooms = [] }) {
   const router = useRouter();
-  if (records.length === 0) {
-    return (
-      <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-xl border border-green-200">
-        合格者の記録がありません。
-      </div>
-    );
-  }
+  const [classroomFilter, setClassroomFilter] = useState('all'); // 'all' | classroomCode
+  const [trackFilter, setTrackFilter] = useState('all');         // 'all' | 'general' | 'manager'
+  const [searchText, setSearchText] = useState('');
+
+  // フィルタ適用
+  const filtered = records
+    .filter((r) => classroomFilter === 'all' ? true : r.classroomCode === classroomFilter)
+    .filter((r) => trackFilter === 'all' ? true : (r.track || 'general') === trackFilter)
+    .filter((r) => {
+      if (!searchText) return true;
+      return (r.fullName || '').includes(searchText) || (r.certNumber || '').includes(searchText);
+    });
+
+  // 教室一覧を「本部」を先頭にして並び替え
+  const orderedClassrooms = [...classrooms].sort((a, b) => (a.isHQ ? -1 : b.isHQ ? 1 : 0));
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-green-200 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead className="bg-green-50 border-b border-green-200">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">修了日</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">教室名</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">氏名</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">修了番号</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">修了証</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-green-50">
-            {records.map((r, idx) => (
-              <tr key={idx} className="hover:bg-green-50 transition-colors">
-                <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{r.completionDate || '—'}</td>
-                <td className="px-4 py-3 text-xs text-gray-800 whitespace-nowrap">{r.classroomName || '—'}</td>
-                <td className="px-4 py-3 text-xs font-medium text-gray-900 whitespace-nowrap">{r.fullName || '—'}</td>
-                <td className="px-4 py-3 font-mono text-xs text-gray-600">{r.certNumber || '—'}</td>
-                <td className="px-4 py-3 text-center">
-                  <button
-                    onClick={() => router.push(`/certificate?record=${r.id}`)}
-                    className="text-xs px-2.5 py-1 bg-green-700 hover:bg-green-600 text-white rounded border border-green-700 transition-colors">
-                    PDF再発行
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div>
+      {/* フィルタバー */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        <input
+          type="text"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          placeholder="氏名・修了番号で検索..."
+          className="flex-1 min-w-48 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        />
+        {/* 教室絞り込み（本部含む） */}
+        <select
+          value={classroomFilter}
+          onChange={(e) => setClassroomFilter(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        >
+          <option value="all">全教室（本部含む）</option>
+          {orderedClassrooms.map((c) => (
+            <option key={c.classroomCode} value={c.classroomCode}>
+              {c.isHQ ? '🏢 ' : ''}{c.classroomName}（{c.classroomCode}）
+            </option>
+          ))}
+        </select>
+        {/* 研修種別 */}
+        <div className="flex gap-1">
+          {[
+            { val: 'all', label: 'すべての研修' },
+            { val: 'general', label: '従事者向け' },
+            { val: 'manager', label: '情報管理責任者' },
+          ].map((f) => (
+            <button
+              key={f.val}
+              onClick={() => setTrackFilter(f.val)}
+              className={`px-3 py-2 text-xs rounded-lg border transition-colors whitespace-nowrap ${trackFilter === f.val ? 'bg-green-800 text-white border-green-800' : 'bg-white text-gray-600 border-gray-300 hover:bg-green-50'}`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
-      <div className="px-4 py-2 border-t border-green-100 bg-green-50 text-xs text-gray-400 text-right">
-        合格者 {records.length} 名
-      </div>
+
+      {filtered.length === 0 ? (
+        <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-xl border border-green-200">
+          {records.length === 0 ? '合格者の記録がありません。' : '条件に一致する合格者がいません。'}
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border border-green-200 overflow-hidden">
+          <ScrollableTable>
+            <table className="min-w-full text-sm">
+              <thead className="bg-green-50 border-b border-green-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">修了日</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">教室名</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">研修種別</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">氏名</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 whitespace-nowrap">修了番号</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-green-900 whitespace-nowrap">修了証</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-green-50">
+                {filtered.map((r, idx) => (
+                  <tr key={idx} className="hover:bg-green-50 transition-colors">
+                    <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{r.completionDate || '—'}</td>
+                    <td className="px-4 py-3 text-xs text-gray-800 whitespace-nowrap">{r.classroomName || '—'}</td>
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                      {r.track === 'manager'
+                        ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">情報管理</span>
+                        : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">従事者向け</span>
+                      }
+                    </td>
+                    <td className="px-4 py-3 text-xs font-medium text-gray-900 whitespace-nowrap">{r.fullName || '—'}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-gray-600">{r.certNumber || '—'}</td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => router.push(`/certificate?record=${r.id}`)}
+                        className="text-xs px-2.5 py-1 bg-green-700 hover:bg-green-600 text-white rounded border border-green-700 transition-colors">
+                        PDF再発行
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </ScrollableTable>
+          <div className="px-4 py-2 border-t border-green-100 bg-green-50 text-xs text-gray-400 text-right">
+            {filtered.length} 件表示（全 {records.length} 件中）
+          </div>
+        </div>
+      )}
     </div>
   );
 }

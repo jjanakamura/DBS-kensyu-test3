@@ -1,25 +1,17 @@
-import fs from 'fs';
-import { getDataPath } from '../../lib/dataPath';
+import { getClassroom, updateClassroom } from '../../lib/db';
 import { getAuthScope } from '../../lib/auth';
 
 /**
  * 教室ステータス更新 API
  * POST /api/update-classroom-status
- * 認証: 管理者 / 事業者 / 教室トークン必須
- *
- * リクエスト: { classroomCode, status }  status: 'active' | 'inactive'
- * レスポンス: { success: true } | { error: string }
  */
-export default function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const authScope = getAuthScope(req, res);
+  const authScope = await getAuthScope(req, res);
   if (!authScope) return;
 
   const { classroomCode, status } = req.body;
-
   if (!classroomCode || !status) {
     return res.status(400).json({ error: 'classroomCode と status は必須です。' });
   }
@@ -28,19 +20,12 @@ export default function handler(req, res) {
   }
 
   try {
-    const filePath = getDataPath('classrooms.json');
-    let classrooms = JSON.parse(fs.readFileSync(filePath, 'utf-8') || '[]');
-
-    const idx = classrooms.findIndex(
-      (c) => c.classroomCode.trim().toUpperCase() === String(classroomCode).trim().toUpperCase()
-    );
-    if (idx === -1) {
-      return res.status(404).json({ error: '教室が見つかりません。' });
+    const cls = await getClassroom(classroomCode);
+    if (!cls) return res.status(404).json({ error: '教室が見つかりません。' });
+    if (authScope.scope !== 'admin' && cls.operatorCode !== authScope.operatorCode) {
+      return res.status(403).json({ error: 'このデータへのアクセス権がありません。' });
     }
-
-    classrooms[idx].status = status;
-    fs.writeFileSync(filePath, JSON.stringify(classrooms, null, 2), 'utf-8');
-
+    await updateClassroom(classroomCode, { status });
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error('update-classroom-status エラー:', err);

@@ -7,6 +7,30 @@
     @apply text-gray-800 bg-green-50;
     font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', sans-serif;
   }
+
+  /* ==============================
+     iOS Safari の意図しないズーム防止
+     ------------------------------
+     iPhone Safari は input/textarea/select の font-size が 16px 未満だと
+     タップ時に画面を勝手にズームします。これを防ぐため、
+     モバイル幅では font-size を 16px に強制（見た目はそのまま、ズームのみ防止）。
+     ============================== */
+  @media (max-width: 640px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="search"],
+    input[type="date"],
+    input[type="time"],
+    input:not([type]),
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
+  }
 }
 
 /* ==============================

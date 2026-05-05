@@ -1,33 +1,20 @@
 import { useState } from 'react';
 import Layout from '../components/Layout';
+import ScrollableTable from '../components/ScrollableTable';
 import dynamic from 'next/dynamic';
+import { calcExpiry, calcRemainingDays } from '../lib/expiry';
+import { downloadCsv } from '../lib/csv';
 const QRCodeCanvas = dynamic(() => import('qrcode.react').then(m => m.QRCodeCanvas), { ssr: false });
 
 /**
  * JJA 協会本部 管理画面
  * - 全事業者・全教室・全受講記録・受講者管理を横断閲覧
  * - タブ①受講記録 ②事業者一覧 ③教室一覧 ④受講者管理
+ *
+ * 有効期限・残日数は src/lib/expiry.js を経由して計算（民法準拠）
  */
 
 // ※ 管理者パスワードは環境変数 ADMIN_PASSWORD で管理（/api/admin-login で検証）
-
-function calcExpiry(completionDate) {
-  if (!completionDate) return null;
-  const m = completionDate.match(/(\d+)年(\d+)月(\d+)日/);
-  if (!m) return null;
-  return `${parseInt(m[1]) + 1}年${m[2]}月${m[3]}日`;
-}
-
-function calcRemainingDays(completionDate) {
-  const expiry = calcExpiry(completionDate);
-  if (!expiry) return null;
-  const m = expiry.match(/(\d+)年(\d+)月(\d+)日/);
-  if (!m) return null;
-  const expiryDate = new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
-}
 
 function RemainingBadge({ days }) {
   if (days === null || days === undefined) return <span className="text-gray-300">—</span>;
@@ -174,6 +161,13 @@ export default function AdminPage() {
   const [addOpError, setAddOpError]         = useState('');
   const [addOpLoading, setAddOpLoading]     = useState(false);
 
+  // 事業者CSV取込
+  const [showBulkOpForm, setShowBulkOpForm] = useState(false);
+  const [bulkOpRows, setBulkOpRows]         = useState([]); // パースした行
+  const [bulkOpError, setBulkOpError]       = useState('');
+  const [bulkOpResult, setBulkOpResult]     = useState(null); // {added, skipped}
+  const [bulkOpLoading, setBulkOpLoading]   = useState(false);
+
   /**
    * 認証付き fetch ラッパー
    * 401 が返った場合はセッション切れとしてログイン画面へ戻す
@@ -251,8 +245,21 @@ export default function AdminPage() {
     });
   };
 
+  // ===== 合格者の過去の不合格レコードを非表示にするための事前計算 =====
+  const passedPersonKeys = new Set(
+    records
+      .filter((r) => r.passed)
+      .map((r) => `${r.operatorCode || r.memberCode || ''}|${r.fullName || ''}`)
+  );
+  // 表示対象：合格レコード or（同人物に合格レコードが無い）不合格レコード
+  const visibleRecords = records.filter((r) => {
+    if (r.passed) return true;
+    const key = `${r.operatorCode || r.memberCode || ''}|${r.fullName || ''}`;
+    return !passedPersonKeys.has(key);
+  });
+
   // ===== 受講記録フィルタ =====
-  const filteredRecords = records
+  const filteredRecords = visibleRecords
     .filter((r) => filterPassed === 'all' ? true : filterPassed === 'passed' ? r.passed : !r.passed)
     .filter((r) => {
       if (!searchText) return true;
@@ -277,6 +284,9 @@ export default function AdminPage() {
   const SortIcon = ({ field }) => sortField === field ? <span className="ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span> : null;
 
   const passedCount = records.filter((r) => r.passed).length;
+  // 表示対象（合格 + 合格未済者の不合格）の件数
+  const visibleCount = visibleRecords.length;
+  const visibleFailedCount = visibleCount - passedCount;
 
   // ===== 事業者フィルタ =====
   const filteredOperators = operators
@@ -319,6 +329,112 @@ export default function AdminPage() {
   const retiredTrainees = trainees.filter((t) => t.status === 'retired').length;
   const suspendedTrainees = trainees.filter((t) => t.status === 'suspended').length;
 
+  // CSV出力は src/lib/csv.js の downloadCsv を使用（RFC 4180準拠・改行/カンマ対応）
+  const today = () => new Date().toISOString().slice(0, 10);
+  const trackLabel = (t) => t === 'manager' ? '情報管理責任者向け研修' : '従事者向け研修';
+  const statusJp = (s) => ({ active: '在籍中', retired: '退職済', suspended: '停止中' }[s] || s || '');
+
+  // 受講記録CSV（フィルタ後の表示中データを出力）
+  const exportRecordsCsv = () => {
+    const header = [
+      '受講日時', '事業者コード', '事業者名', '教室コード', '教室名',
+      '氏名', '研修種別', '得点', '合否', '修了日', '修了番号', '有効期限',
+    ];
+    const rows = filteredRecords.map((r) => [
+      r.submittedAt ? new Date(r.submittedAt).toLocaleString('ja-JP') : '',
+      r.operatorCode || r.memberCode || '',
+      r.companyName || '',
+      r.classroomCode || '',
+      r.classroomName || '',
+      r.fullName || '',
+      trackLabel(r.track),
+      r.score != null ? `${r.score}%` : '',
+      r.passed ? '合格' : '不合格',
+      r.completionDate || '',
+      r.certNumber || '',
+      r.passed ? (calcExpiry(r.completionDate) || '') : '',
+    ]);
+    downloadCsv(`受講記録_全事業者_${today()}.csv`, [header, ...rows]);
+  };
+
+  // 事業者一覧CSV（教室数・受講者数・合格者数を集計）
+  const exportOperatorsCsv = () => {
+    const header = [
+      '事業者コード', '事業者名', '担当者名', 'ステータス', '登録日',
+      '教室数', '受講者数', '受講記録数', '合格者数', '備考',
+    ];
+    const rows = filteredOperators.map((o) => {
+      const code = o.operatorCode;
+      const clsCount = classrooms.filter((c) => c.operatorCode === code).length;
+      const trCount  = trainees.filter((t) => t.operatorCode === code).length;
+      const recCount = records.filter((r) => (r.operatorCode || r.memberCode) === code).length;
+      const passCount = records.filter((r) => (r.operatorCode || r.memberCode) === code && r.passed).length;
+      return [
+        code,
+        o.companyName || '',
+        o.contactName || '',
+        o.status === 'active' ? '有効' : '停止',
+        o.registeredAt || '',
+        clsCount, trCount, recCount, passCount,
+        o.note || '',
+      ];
+    });
+    downloadCsv(`事業者一覧_${today()}.csv`, [header, ...rows]);
+  };
+
+  // 教室一覧CSV（事業者単位・受講者数・合格者数）
+  const exportClassroomsCsv = () => {
+    const header = [
+      '事業者コード', '事業者名', '教室コード', '教室名', '本部教室',
+      'ステータス', '登録日', '受講者数', '合格者数',
+    ];
+    const rows = filteredClassrooms.map((c) => {
+      const op = operators.find((o) => o.operatorCode === c.operatorCode);
+      const clsTrainees = trainees.filter((t) => t.classroomCode === c.classroomCode);
+      const clsPassed = records.filter((r) => r.classroomCode === c.classroomCode && r.passed).length;
+      return [
+        c.operatorCode, op?.companyName || '',
+        c.classroomCode, c.classroomName || '',
+        c.isHQ ? '○' : '',
+        c.status === 'active' ? '有効' : '停止',
+        c.createdAt || '',
+        clsTrainees.length, clsPassed,
+      ];
+    });
+    downloadCsv(`教室一覧_${today()}.csv`, [header, ...rows]);
+  };
+
+  // 受講者管理CSV（直近の合格情報・有効期限・残日数）
+  const exportTraineesCsv = () => {
+    const header = [
+      '事業者コード', '事業者名', '教室コード', '教室名', '氏名',
+      '研修種別', 'ステータス', '登録日', '修了日', '有効期限', '残り日数', '備考',
+    ];
+    const rows = filteredTrainees.map((t) => {
+      const latestPassed = records
+        .filter((r) => r.passed && r.fullName === t.fullName && (r.operatorCode || r.memberCode) === t.operatorCode)
+        .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))[0];
+      const completion = latestPassed?.completionDate || '';
+      const expiry = completion ? (calcExpiry(completion) || '') : '';
+      const remaining = completion ? calcRemainingDays(completion) : null;
+      return [
+        t.operatorCode || '',
+        t.companyName || '',
+        t.classroomCode || '',
+        t.classroomName || '',
+        t.fullName || '',
+        trackLabel(t.track),
+        statusJp(t.status),
+        t.registeredAt || '',
+        completion,
+        expiry,
+        remaining !== null ? `${remaining}日` : '',
+        t.notes || '',
+      ];
+    });
+    downloadCsv(`受講者一覧_${today()}.csv`, [header, ...rows]);
+  };
+
   // ===== ステータス変更モーダル =====
   const openStatusModal = (trainee) => {
     setStatusModal({ id: trainee.id, fullName: trainee.fullName, currentStatus: trainee.status });
@@ -343,6 +459,111 @@ export default function AdminPage() {
       }
     } catch (e) { console.error(e); }
     finally { setStatusUpdating(false); }
+  };
+
+  // ─── 事業者CSV取込のロジック ───
+  const parseOperatorsCsv = (text) => {
+    // BOM除去
+    const cleaned = text.replace(/^﻿/, '');
+    const lines = cleaned.split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length < 2) {
+      throw new Error('CSVが空、またはヘッダのみです。');
+    }
+    // 1行目はヘッダ → 期待カラム： operatorCode, companyName, contactName, adminPassword
+    const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''));
+    const idxOp = headers.findIndex((h) => /operatorCode|事業者コード/i.test(h));
+    const idxCom = headers.findIndex((h) => /companyName|会社名|事業者名/i.test(h));
+    const idxContact = headers.findIndex((h) => /contactName|担当者/i.test(h));
+    const idxPw = headers.findIndex((h) => /adminPassword|パスワード/i.test(h));
+    if (idxOp < 0 || idxCom < 0 || idxPw < 0) {
+      throw new Error('ヘッダ行に「事業者コード」「会社名」「パスワード」が必要です。');
+    }
+    // 簡易CSVパーサ（クォート対応）
+    const parseRow = (line) => {
+      const result = [];
+      let cur = '';
+      let inQuote = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQuote) {
+          if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+          else if (ch === '"') { inQuote = false; }
+          else { cur += ch; }
+        } else {
+          if (ch === ',') { result.push(cur); cur = ''; }
+          else if (ch === '"') { inQuote = true; }
+          else { cur += ch; }
+        }
+      }
+      result.push(cur);
+      return result;
+    };
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = parseRow(lines[i]);
+      rows.push({
+        operatorCode: (cols[idxOp] || '').trim(),
+        companyName:  (cols[idxCom] || '').trim(),
+        contactName:  idxContact >= 0 ? (cols[idxContact] || '').trim() : '',
+        adminPassword: (cols[idxPw] || '').trim(),
+      });
+    }
+    return rows;
+  };
+
+  const handleBulkCsvFile = (e) => {
+    setBulkOpError('');
+    setBulkOpResult(null);
+    setBulkOpRows([]);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 1 * 1024 * 1024) {
+      setBulkOpError('ファイルサイズが大きすぎます（最大1MB）。');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const rows = parseOperatorsCsv(String(ev.target.result || ''));
+        if (rows.length === 0) { setBulkOpError('登録対象の行がありません。'); return; }
+        if (rows.length > 500) { setBulkOpError('500件を超える登録はできません。'); return; }
+        setBulkOpRows(rows);
+      } catch (err) {
+        setBulkOpError(err.message || 'CSVの読み込みに失敗しました。');
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
+
+  const handleBulkSubmit = async () => {
+    if (bulkOpRows.length === 0) return;
+    setBulkOpLoading(true);
+    setBulkOpError('');
+    try {
+      const res = await fetchWithAuth('/api/add-operators-bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
+        body: JSON.stringify({ operators: bulkOpRows }),
+      });
+      if (!res) return;
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setBulkOpError(data.error || '一括登録に失敗しました。');
+        return;
+      }
+      setBulkOpResult(data);
+      await refresh();
+    } catch (err) {
+      setBulkOpError('通信エラーが発生しました。');
+    } finally {
+      setBulkOpLoading(false);
+    }
+  };
+
+  const downloadOperatorsTemplate = () => {
+    const header = ['operatorCode', 'companyName', 'contactName', 'adminPassword'];
+    const sample = ['C001', '株式会社サンプル', '山田太郎', 'sample2026'];
+    downloadCsv('事業者登録テンプレート.csv', [header, sample]);
   };
 
   const handleAddOperator = async (e) => {
@@ -605,9 +826,9 @@ export default function AdminPage() {
         {activeTab === 'records' && (
           <>
             <div className="grid grid-cols-3 gap-4 mb-5">
-              <div className="bg-white rounded-lg border border-green-200 p-4 text-center"><p className="text-xs text-gray-500 mb-1">総受講数</p><p className="text-2xl font-bold">{records.length}</p></div>
+              <div className="bg-white rounded-lg border border-green-200 p-4 text-center"><p className="text-xs text-gray-500 mb-1">表示中の記録数</p><p className="text-2xl font-bold">{visibleCount}</p><p className="text-[10px] text-gray-400 mt-0.5">（合格者の過去の不合格は非表示）</p></div>
               <div className="bg-white rounded-lg border border-green-300 p-4 text-center"><p className="text-xs text-green-700 mb-1">合格</p><p className="text-2xl font-bold text-green-700">{passedCount}</p></div>
-              <div className="bg-white rounded-lg border border-red-200 p-4 text-center"><p className="text-xs text-red-500 mb-1">不合格</p><p className="text-2xl font-bold text-red-600">{records.length - passedCount}</p></div>
+              <div className="bg-white rounded-lg border border-red-200 p-4 text-center"><p className="text-xs text-red-500 mb-1">不合格（再受験中）</p><p className="text-2xl font-bold text-red-600">{visibleFailedCount}</p></div>
             </div>
             <div className="flex flex-wrap gap-3 mb-4">
               <input type="text" value={searchText} onChange={(e) => setSearchText(e.target.value)}
@@ -621,6 +842,14 @@ export default function AdminPage() {
                   </button>
                 ))}
               </div>
+              <button
+                onClick={exportRecordsCsv}
+                disabled={filteredRecords.length === 0}
+                className="px-3 py-2 text-xs bg-white border border-green-300 text-green-700 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors whitespace-nowrap"
+                title="表示中の受講記録をCSVでダウンロード"
+              >
+                📥 受講記録CSV（{filteredRecords.length}件）
+              </button>
             </div>
             {filteredRecords.length === 0 ? (
               <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-xl border border-green-200">
@@ -628,7 +857,7 @@ export default function AdminPage() {
               </div>
             ) : (
               <div className="bg-white rounded-xl shadow-sm border border-green-200 overflow-hidden">
-                <div className="overflow-x-auto">
+                <ScrollableTable>
                   <table className="min-w-full text-sm">
                     <thead className="bg-green-50 border-b border-green-200">
                       <tr>
@@ -667,7 +896,7 @@ export default function AdminPage() {
                           <td className="px-4 py-3 text-center">
                             {r.track === 'manager'
                               ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">情報管理</span>
-                              : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">一般</span>
+                              : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">従事者向け</span>
                             }
                           </td>
                           <td className="px-4 py-3 text-xs text-center font-semibold">{r.score != null ? `${r.score}%` : '—'}</td>
@@ -717,7 +946,7 @@ export default function AdminPage() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </ScrollableTable>
                 <div className="px-4 py-2 border-t border-green-100 bg-green-50 text-xs text-gray-400 text-right">
                   {filteredRecords.length} 件表示（全 {records.length} 件）
                 </div>
@@ -729,14 +958,111 @@ export default function AdminPage() {
         {/* ===== タブ②：事業者一覧 ===== */}
         {activeTab === 'operators' && (
           <>
-            {/* 新規事業者登録 */}
-            <div className="mb-4">
+            {/* 新規事業者登録（単発・一括）*/}
+            <div className="mb-4 flex flex-wrap gap-2">
               <button
-                onClick={() => { setShowAddOpForm(v => !v); setAddOpError(''); }}
+                onClick={() => { setShowAddOpForm(v => !v); setShowBulkOpForm(false); setAddOpError(''); }}
                 className="flex items-center gap-2 bg-green-800 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
               >
                 <span>＋</span> 新規事業者を登録する
               </button>
+              <button
+                onClick={() => { setShowBulkOpForm(v => !v); setShowAddOpForm(false); setBulkOpError(''); setBulkOpResult(null); setBulkOpRows([]); }}
+                className="flex items-center gap-2 bg-white border border-green-700 text-green-800 hover:bg-green-50 text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+              >
+                📥 CSVで一括登録
+              </button>
+            </div>
+
+            {/* CSV一括登録パネル */}
+            {showBulkOpForm && (
+              <div className="mb-4 bg-amber-50 border border-amber-300 rounded-xl p-4 space-y-3">
+                <h3 className="text-sm font-bold text-amber-900">事業者をCSVで一括登録</h3>
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  CSVの1行目はヘッダ行で、列は <span className="font-mono bg-white px-1 rounded">operatorCode, companyName, contactName, adminPassword</span>（または日本語：事業者コード／会社名／担当者名／パスワード）。
+                  本部教室は自動作成されます。重複・不正な行はスキップされます（最大500件）。
+                </p>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <button
+                    type="button"
+                    onClick={downloadOperatorsTemplate}
+                    className="text-xs px-3 py-2 bg-white border border-amber-400 text-amber-800 hover:bg-amber-100 rounded-lg transition-colors"
+                  >
+                    📄 テンプレートCSVをダウンロード
+                  </button>
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={handleBulkCsvFile}
+                    className="text-xs"
+                  />
+                </div>
+                {bulkOpError && <p className="text-xs text-red-600">{bulkOpError}</p>}
+                {bulkOpRows.length > 0 && !bulkOpResult && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-amber-900">
+                      <strong>{bulkOpRows.length}件</strong> 取り込み準備完了
+                    </p>
+                    <div className="max-h-60 overflow-auto bg-white rounded border border-amber-200">
+                      <table className="min-w-full text-xs">
+                        <thead className="bg-amber-100 sticky top-0">
+                          <tr>
+                            <th className="px-2 py-1 text-left">事業者コード</th>
+                            <th className="px-2 py-1 text-left">会社名</th>
+                            <th className="px-2 py-1 text-left">担当者</th>
+                            <th className="px-2 py-1 text-left">パスワード</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {bulkOpRows.map((r, i) => (
+                            <tr key={i} className="border-t border-amber-100">
+                              <td className="px-2 py-1 font-mono">{r.operatorCode}</td>
+                              <td className="px-2 py-1">{r.companyName}</td>
+                              <td className="px-2 py-1">{r.contactName}</td>
+                              <td className="px-2 py-1 text-gray-400">{'*'.repeat(Math.min(r.adminPassword.length, 8))}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <button
+                      onClick={handleBulkSubmit}
+                      disabled={bulkOpLoading}
+                      className="bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+                    >
+                      {bulkOpLoading ? '登録中...' : `${bulkOpRows.length}件を登録する`}
+                    </button>
+                  </div>
+                )}
+                {bulkOpResult && (
+                  <div className="space-y-2">
+                    <p className="text-sm">
+                      <span className="font-bold text-green-800">✅ {bulkOpResult.addedCount}件 登録成功</span>
+                      {bulkOpResult.skippedCount > 0 && (
+                        <span className="ml-3 text-amber-700">⚠️ {bulkOpResult.skippedCount}件 スキップ</span>
+                      )}
+                    </p>
+                    {bulkOpResult.skipped && bulkOpResult.skipped.length > 0 && (
+                      <details className="text-xs">
+                        <summary className="cursor-pointer text-amber-800">スキップ詳細を表示</summary>
+                        <ul className="mt-1 space-y-0.5 ml-4">
+                          {bulkOpResult.skipped.map((s, i) => (
+                            <li key={i} className="text-amber-800">{s.operatorCode}：{s.reason}</li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
+                    <button
+                      onClick={() => { setShowBulkOpForm(false); setBulkOpResult(null); setBulkOpRows([]); }}
+                      className="text-xs px-3 py-1.5 bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                    >
+                      閉じる
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="mb-4">
               {showAddOpForm && (
                 <form onSubmit={handleAddOperator} className="mt-3 bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
                   <h3 className="text-sm font-bold text-green-900">新規事業者登録</h3>
@@ -792,9 +1118,17 @@ export default function AdminPage() {
                   </button>
                 ))}
               </div>
+              <button
+                onClick={exportOperatorsCsv}
+                disabled={filteredOperators.length === 0}
+                className="px-3 py-2 text-xs bg-white border border-green-300 text-green-700 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors whitespace-nowrap"
+                title="表示中の事業者をCSVでダウンロード"
+              >
+                📥 事業者一覧CSV（{filteredOperators.length}件）
+              </button>
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-green-200 overflow-hidden">
-              <div className="overflow-x-auto">
+              <ScrollableTable>
                 <table className="min-w-full text-sm">
                   <thead className="bg-green-50 border-b border-green-200">
                     <tr>
@@ -866,7 +1200,7 @@ export default function AdminPage() {
                     })}
                   </tbody>
                 </table>
-              </div>
+              </ScrollableTable>
               <div className="px-4 py-2 border-t border-green-100 bg-green-50 text-xs text-gray-400 text-right">
                 {filteredOperators.length} 件表示（全 {operators.length} 社）
               </div>
@@ -892,9 +1226,17 @@ export default function AdminPage() {
                   <option key={o.operatorCode} value={o.operatorCode}>{o.operatorCode}：{o.companyName}</option>
                 ))}
               </select>
+              <button
+                onClick={exportClassroomsCsv}
+                disabled={filteredClassrooms.length === 0}
+                className="px-3 py-2 text-xs bg-white border border-green-300 text-green-700 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors whitespace-nowrap"
+                title="表示中の教室をCSVでダウンロード"
+              >
+                📥 教室一覧CSV（{filteredClassrooms.length}件）
+              </button>
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-green-200 overflow-hidden">
-              <div className="overflow-x-auto">
+              <ScrollableTable>
                 <table className="min-w-full text-sm">
                   <thead className="bg-green-50 border-b border-green-200">
                     <tr>
@@ -965,7 +1307,7 @@ export default function AdminPage() {
                     })}
                   </tbody>
                 </table>
-              </div>
+              </ScrollableTable>
               <div className="px-4 py-2 border-t border-green-100 bg-green-50 text-xs text-gray-400 text-right">
                 {filteredClassrooms.length} 件表示（全 {classrooms.length} 室）
               </div>
@@ -1014,6 +1356,14 @@ export default function AdminPage() {
                   className="w-4 h-4 accent-gray-600" />
                 退職者を含む
               </label>
+              <button
+                onClick={exportTraineesCsv}
+                disabled={filteredTrainees.length === 0}
+                className="px-3 py-2 text-xs bg-white border border-green-300 text-green-700 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors whitespace-nowrap"
+                title="表示中の受講者をCSVでダウンロード"
+              >
+                📥 受講者一覧CSV（{filteredTrainees.length}件）
+              </button>
             </div>
 
             {filteredTrainees.length === 0 ? (
@@ -1022,7 +1372,7 @@ export default function AdminPage() {
               </div>
             ) : (
               <div className="bg-white rounded-xl shadow-sm border border-green-200 overflow-hidden">
-                <div className="overflow-x-auto">
+                <ScrollableTable>
                   <table className="min-w-full text-sm">
                     <thead className="bg-green-50 border-b border-green-200">
                       <tr>
@@ -1056,7 +1406,7 @@ export default function AdminPage() {
                           <td className="px-4 py-3 text-center">
                             {t.track === 'manager'
                               ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">情報管理</span>
-                              : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">一般</span>
+                              : <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">従事者向け</span>
                             }
                           </td>
                           <td className="px-4 py-3 text-center">
@@ -1116,7 +1466,7 @@ export default function AdminPage() {
                       })}
                     </tbody>
                   </table>
-                </div>
+                </ScrollableTable>
                 <div className="px-4 py-2 border-t border-green-100 bg-green-50 text-xs text-gray-400 text-right">
                   {filteredTrainees.length} 件表示（全 {trainees.length} 件）
                 </div>
@@ -1271,7 +1621,7 @@ export default function AdminPage() {
               </div>
 
               {/* ログテーブル */}
-              <div className="overflow-x-auto">
+              <ScrollableTable>
                 {accessLogs.length === 0 && !logsLoading ? (
                   <p className="text-center text-sm text-gray-400 py-10">ログがありません。ログインが発生すると記録されます。</p>
                 ) : (
@@ -1313,7 +1663,7 @@ export default function AdminPage() {
                     </tbody>
                   </table>
                 )}
-              </div>
+              </ScrollableTable>
               <div className="px-4 py-2 border-t border-green-100 bg-green-50 text-xs text-gray-400 text-right">
                 {accessLogs.filter(l => (logTypeFilter === 'all' || l.type === logTypeFilter) && (logResultFilter === 'all' || l.result === logResultFilter)).length} 件表示
               </div>

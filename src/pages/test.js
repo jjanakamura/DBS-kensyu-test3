@@ -4,38 +4,23 @@ import Layout from '../components/Layout';
 
 /**
  * 確認テスト画面
- * - 40問バンクからランダムに20問を選択
- * - 設問順シャッフル・選択肢順シャッフル（Fisher-Yates）
+ * - data/questions.json の20問を「固定順」で出題（ランダム化なし）
+ * - 選択肢の順序も固定（公式問題集どおりの並び）
  * - 合格基準：16問以上正解（80%）
  * - 不合格回数を sessionStorage に記録
  *   1〜2回目不合格：テストのみ再受講可
  *   3回目以降不合格：動画視聴から再受講
  */
 
-const QUESTION_COUNT = 20;  // 出題数
 const PASS_COUNT = 16;       // 合格に必要な正答数（80%）
 
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-// 40問バンクからランダムに20問選択し、設問・選択肢をシャッフル
+// 問題バンクをそのままの順序・選択肢で出題用に整形（シャッフルなし）
 function prepareQuestions(allQuestions) {
-  const selected = shuffle(allQuestions).slice(0, QUESTION_COUNT);
-  return selected.map((q) => {
-    const correctText = q.choices[q.answer];
-    const shuffledChoices = shuffle(q.choices);
-    return {
-      ...q,
-      shuffledChoices,
-      shuffledCorrectIndex: shuffledChoices.indexOf(correctText),
-    };
-  });
+  return allQuestions.map((q) => ({
+    ...q,
+    shuffledChoices: q.choices,         // 元の並びをそのまま使用
+    shuffledCorrectIndex: q.answer,     // 元の正解インデックスをそのまま使用
+  }));
 }
 
 export default function TestPage({ questions, questionsManager }) {
@@ -95,8 +80,10 @@ export default function TestPage({ questions, questionsManager }) {
 
     const traineeData = JSON.parse(sessionStorage.getItem('trainee'));
 
+    // サーバー側で正規化された不合格回数（improbable改ざん対策）
+    let serverFailCount = newFailCount;
     try {
-      await fetch('/api/submit-record', {
+      const apiRes = await fetch('/api/submit-record', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -109,13 +96,19 @@ export default function TestPage({ questions, questionsManager }) {
           submittedAt: new Date().toISOString(),
         }),
       });
+      const apiData = await apiRes.json();
+      if (typeof apiData.serverFailCount === 'number') {
+        serverFailCount = apiData.serverFailCount;
+        // フロントの表示用 sessionStorage もサーバー値で上書き（改ざん防止の意味は薄いが整合性のため）
+        sessionStorage.setItem('failCount', String(serverFailCount));
+      }
     } catch (e) {
       console.error('記録の保存に失敗しました:', e);
     }
 
     sessionStorage.setItem('result', JSON.stringify({
       score, correctCount, totalQuestions, passed,
-      failCount: newFailCount,
+      failCount: serverFailCount,
       completionDate: passed ? completionDate : null,
       certNumber: passed ? certNumber : null,
       answerDetails,
@@ -152,7 +145,7 @@ export default function TestPage({ questions, questionsManager }) {
         </p>
 
         <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-6 text-xs text-green-800">
-          ※ 40問の問題バンクから20問がランダムに出題されます。問題・選択肢の順番も毎回変わります。
+          ※ 全20問の確認テストです。16問以上正解（80%以上）で合格となります。
         </div>
 
         {/* 問題一覧 */}

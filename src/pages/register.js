@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
+import { sanitizeName, sanitizeText, validateName } from '../lib/sanitize';
 
 /**
  * 基本情報入力画面
@@ -18,8 +19,6 @@ export default function Register() {
   const [errors, setErrors] = useState({});
   const [urlParamsApplied, setUrlParamsApplied] = useState(false);
   const [track, setTrack] = useState('general'); // 'general' | 'manager'
-  const [pledged, setPledged] = useState(false);
-  const [consented, setConsented] = useState(false); // 個人情報同意
 
   // URLパラメータ ?biz=A001&cls=A001-C01&track=manager の自動処理
   useEffect(() => {
@@ -33,10 +32,11 @@ export default function Register() {
     setTrack(trk);
     setForm((prev) => ({ ...prev, operatorCode: biz }));
     if (cls) setClassroomCode(cls);
-    lookupOperator(biz, cls || null);
+    // track はステート反映を待たず明示的に渡す（state更新の非同期性対策）
+    lookupOperator(biz, cls || null, trk);
   }, [router.isReady, router.query]);
 
-  const lookupOperator = async (code, clsCode) => {
+  const lookupOperator = async (code, clsCode, trackOverride) => {
     if (!code) return;
     setCodeStatus('checking');
     setCompanyName('');
@@ -44,7 +44,11 @@ export default function Register() {
       const res = await fetch('/api/lookup-operator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ operatorCode: code, classroomCode: clsCode }),
+        body: JSON.stringify({
+          operatorCode: code,
+          classroomCode: clsCode,
+          track: trackOverride !== undefined ? trackOverride : track,
+        }),
       });
       const data = await res.json();
 
@@ -61,6 +65,13 @@ export default function Register() {
         setErrors((prev) => ({
           ...prev,
           operatorCode: 'このコードは現在ご利用できません。事務局にお問い合わせください。',
+        }));
+      } else if (data.managerNotAllowed) {
+        // 情報管理責任者向け研修を本部以外の教室から受講しようとした場合
+        setCodeStatus('manager_not_allowed');
+        setErrors((prev) => ({
+          ...prev,
+          operatorCode: data.message || '情報管理責任者向け研修は、事業者本部からの専用URLでのみ受講可能です。',
         }));
       } else {
         setCodeStatus('error');
@@ -81,11 +92,18 @@ export default function Register() {
     const errs = {};
     if (!form.operatorCode.trim()) errs.operatorCode = '事業者コードを入力してください。';
     else if (codeStatus === 'inactive') errs.operatorCode = 'このコードは現在ご利用できません。';
+    else if (codeStatus === 'manager_not_allowed') {
+      errs.operatorCode = '情報管理責任者向け研修は、事業者本部からの専用URLでのみ受講可能です。';
+    }
     else if (codeStatus !== 'ok') errs.operatorCode = '有効な事業者コードを入力・照合してください。';
-    if (!form.classroomName.trim()) errs.classroomName = '教室名を入力してください。';
-    if (!form.fullName.trim()) errs.fullName = '氏名を入力してください。';
-    if (!consented) errs.consented = 'プライバシーポリシーへの同意が必要です。';
-    if (!pledged) errs.pledged = '本人受講の誓約にチェックしてください。';
+
+    // 教室名（HTMLタグ・制御文字を除去して検証）
+    const cleanClassroom = sanitizeText(form.classroomName, 100);
+    if (!cleanClassroom) errs.classroomName = '教室名を入力してください。';
+
+    // 氏名（より厳密にサニタイズ・検証）
+    const nameCheck = validateName(form.fullName, 50);
+    if (!nameCheck.ok) errs.fullName = nameCheck.error;
     return errs;
   };
 
@@ -93,14 +111,16 @@ export default function Register() {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    // sessionStorageに保存する前にサニタイズ済みの値を使用
+    const cleanFullName = sanitizeName(form.fullName, 50);
+    const cleanClassroom = sanitizeText(form.classroomName, 100);
     sessionStorage.setItem('trainee', JSON.stringify({
-      operatorCode: form.operatorCode.trim(),
+      operatorCode: form.operatorCode.trim().toUpperCase(),
       classroomCode: classroomCode || '',
       companyName,
-      classroomName: form.classroomName.trim(),
-      fullName: form.fullName.trim(),
+      classroomName: cleanClassroom,
+      fullName: cleanFullName,
       track: track || 'general',
-      consentedAt: new Date().toISOString(),
     }));
     router.push('/video');
   };
@@ -204,6 +224,7 @@ export default function Register() {
               onChange={(e) => !classroomLocked && setForm({ ...form, classroomName: e.target.value })}
               readOnly={classroomLocked}
               placeholder="例：渋谷校"
+              maxLength={100}
               className={`${inputClass('classroomName')} ${classroomLocked ? 'cursor-not-allowed opacity-75 bg-green-50 border-green-300' : ''}`}
             />
             {errors.classroomName && <p className="mt-1 text-xs text-red-600">{errors.classroomName}</p>}
@@ -214,59 +235,10 @@ export default function Register() {
             <label className="block text-sm font-medium text-gray-700 mb-1">氏名 <span className="text-red-500">*</span></label>
             <input type="text" value={form.fullName}
               onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-              placeholder="例：山田 太郎" className={inputClass('fullName')} />
+              placeholder="例：山田 太郎"
+              maxLength={50}
+              className={inputClass('fullName')} />
             {errors.fullName && <p className="mt-1 text-xs text-red-600">{errors.fullName}</p>}
-          </div>
-
-          {/* 個人情報の取り扱いに関する同意 */}
-          <div className={`rounded-lg border p-4 ${errors.consented ? 'border-red-400 bg-red-50' : 'border-blue-100 bg-blue-50'}`}>
-            <p className="text-xs font-bold text-blue-900 mb-2">🔒 個人情報の取り扱いについて</p>
-            <div className="text-xs text-gray-700 space-y-1 mb-3">
-              <p><span className="font-semibold">収集する情報：</span>氏名、所属教室名、受講記録（修了日・テスト結果）</p>
-              <p><span className="font-semibold">利用目的：</span>受講記録の管理、修了証の発行、有効期限の管理、再研修のご案内</p>
-              <p><span className="font-semibold">第三者提供：</span>法令に基づく場合を除き、第三者への提供は行いません。</p>
-              <p><span className="font-semibold">管理者：</span>一般社団法人全国学習塾協会（JJA）</p>
-              <p className="mt-1">
-                詳細は
-                <a
-                  href="https://jja.or.jp/privacy-policy-2/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-700 underline font-semibold ml-0.5 mr-0.5"
-                >
-                  プライバシーポリシー
-                </a>
-                をご確認ください。
-              </p>
-            </div>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={consented}
-                onChange={(e) => setConsented(e.target.checked)}
-                className="mt-0.5 flex-shrink-0 w-4 h-4 accent-blue-700"
-              />
-              <span className="text-sm text-gray-800 leading-relaxed">
-                プライバシーポリシーに同意し、上記の目的での<strong>個人情報の取り扱いに同意</strong>します。<span className="text-red-500 ml-0.5">*</span>
-              </span>
-            </label>
-            {errors.consented && <p className="mt-2 text-xs text-red-600">{errors.consented}</p>}
-          </div>
-
-          {/* 本人受講の誓約 */}
-          <div className={`rounded-lg border p-4 ${errors.pledged ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={pledged}
-                onChange={(e) => setPledged(e.target.checked)}
-                className="mt-0.5 flex-shrink-0 w-4 h-4 accent-green-700"
-              />
-              <span className="text-sm text-gray-700 leading-relaxed">
-                私は、この研修を<strong>本人自身が受講</strong>していることを誓います。
-              </span>
-            </label>
-            {errors.pledged && <p className="mt-2 text-xs text-red-600">{errors.pledged}</p>}
           </div>
 
           <div className="pt-2">

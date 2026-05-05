@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
+import { calcExpiry, EXPIRY_CAPTION } from '../lib/expiry';
 
 /**
  * 修了証画面
@@ -8,14 +9,9 @@ import Layout from '../components/Layout';
  * - 再発行フロー: ?record=REC-xxx でDBからレコードを取得して表示
  * - A4縦サイズ（210mm × 297mm）に合わせたデザイン
  * - jsPDF + html2canvas で PDF 出力（ダウンロード）
+ *
+ * 有効期限は src/lib/expiry.js の calcExpiry() を使用（民法準拠）
  */
-
-function calcExpiry(completionDate) {
-  if (!completionDate) return null;
-  const m = completionDate.match(/(\d+)年(\d+)月(\d+)日/);
-  if (!m) return null;
-  return `${parseInt(m[1]) + 1}年${m[2]}月${m[3]}日`;
-}
 
 export default function CertificatePage() {
   const router = useRouter();
@@ -23,6 +19,7 @@ export default function CertificatePage() {
   const [result, setResult] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [isReissue, setIsReissue] = useState(false);
+  const [zoomOpen, setZoomOpen] = useState(false); // 拡大プレビューモーダル
   const certRef = useRef(null);
 
   useEffect(() => {
@@ -111,14 +108,14 @@ export default function CertificatePage() {
     ? {
         pageTitle: isReissue ? '修了証（再発行）' : '修了証',
         certTitle: '修 了 証',
-        trainingName: 'こども性暴力防止法（日本版DBS）情報管理責任者研修',
+        trainingName: 'こども性暴力防止法（日本版DBS）情報管理責任者向け研修',
         bodyText: '上記の者は、こども性暴力防止法（日本版DBS）に関する情報管理責任者向け研修を受講し、\n所定の確認テストに合格したことを証します。',
       }
     : {
         pageTitle: isReissue ? '修了証（再発行）' : '修了証',
         certTitle: '修 了 証',
-        trainingName: 'こども性暴力防止法（日本版DBS）対応研修',
-        bodyText: '上記の者は、こども性暴力防止法（日本版DBS）に関する研修を受講し、\n所定の確認テストに合格したことを証します。',
+        trainingName: 'こども性暴力防止法（日本版DBS）従事者向け研修',
+        bodyText: '上記の者は、こども性暴力防止法（日本版DBS）に関する従事者向け研修を受講し、\n所定の確認テストに合格したことを証します。',
       };
 
   return (
@@ -148,7 +145,18 @@ export default function CertificatePage() {
           </p>
         </div>
 
-        {/* ========== 修了証本体（A4 比率固定） ========== */}
+        {/* スマホ向け案内 */}
+        <div className="sm:hidden bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-xs text-amber-900">
+          <p className="font-semibold mb-0.5">📱 スマートフォンでご覧の方へ</p>
+          <p>修了証のプレビューをタップすると拡大表示できます。きれいに保存したい場合は下の「PDF出力」をご利用ください。</p>
+        </div>
+
+        {/* ========== 修了証本体（A4 比率固定／スマホはタップで拡大） ========== */}
+        <div
+          onClick={() => setZoomOpen(true)}
+          className="sm:cursor-default cursor-zoom-in"
+          title="タップで拡大表示"
+        >
         <div
           ref={certRef}
           id="certificate-print"
@@ -169,71 +177,62 @@ export default function CertificatePage() {
 
             {/* タイトル */}
             <div style={{ textAlign: 'center', paddingTop: '2%' }}>
-              <div style={{ display: 'inline-block', borderTop: '2px solid #166534', borderBottom: '2px solid #166534', padding: '8px 48px' }}>
-                <h2 style={{ fontSize: 'clamp(22px, 4.5vw, 36px)', fontWeight: 'bold', color: '#14532d', letterSpacing: '0.35em', margin: 0 }}>
-                  {certConfig.certTitle}
-                </h2>
-              </div>
-              {isManager && (
-                <p style={{ fontSize: 'clamp(9px, 1.3vw, 11px)', color: '#92400e', fontWeight: 'bold', letterSpacing: '0.15em', marginTop: '6px' }}>
-                  情報管理責任者研修
-                </p>
-              )}
+              <h2 style={{ fontSize: '36px', fontWeight: 'bold', color: '#14532d', letterSpacing: '0.35em', margin: 0 }}>
+                {certConfig.certTitle}
+              </h2>
             </div>
 
             {/* 受講者情報 */}
             <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: 'clamp(14px, 2.4vw, 20px)', color: '#1f2937', fontWeight: 'bold', marginBottom: '4px' }}>
+              <p style={{ fontSize: '17px', color: '#1f2937', fontWeight: 'bold', marginBottom: '4px' }}>
                 {trainee.companyName}
               </p>
-              <p style={{ fontSize: 'clamp(13px, 2vw, 17px)', color: '#374151', fontWeight: 'bold', marginBottom: '16px' }}>
+              <p style={{ fontSize: '15px', color: '#374151', fontWeight: 'bold', marginBottom: '16px' }}>
                 {trainee.classroomName}
               </p>
               <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: '8px', borderBottom: '2px solid #14532d', paddingBottom: '4px', paddingLeft: '32px', paddingRight: '32px' }}>
-                <p style={{ fontSize: 'clamp(22px, 4.5vw, 38px)', fontWeight: 'bold', color: '#111827', margin: 0, letterSpacing: '0.1em' }}>
+                <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#111827', margin: 0, letterSpacing: '0.1em' }}>
                   {trainee.fullName}
                 </p>
-                <span style={{ fontSize: 'clamp(13px, 2vw, 18px)', color: '#374151', fontWeight: 'normal' }}>殿</span>
+                <span style={{ fontSize: '15px', color: '#374151', fontWeight: 'normal' }}>殿</span>
               </div>
             </div>
 
             {/* 研修名・本文 */}
             <div style={{ textAlign: 'center' }}>
               <p style={{ fontSize: '10px', color: '#166534', fontWeight: 'bold', letterSpacing: '0.3em', marginBottom: '6px' }}>研　修　名</p>
-              <div style={{ display: 'inline-block', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '4px', padding: '6px 24px', marginBottom: '14px' }}>
-                <p style={{ fontSize: 'clamp(11px, 1.8vw, 15px)', fontWeight: 'bold', color: '#14532d', margin: 0 }}>
-                  {certConfig.trainingName}
-                </p>
-              </div>
-              <p style={{ fontSize: 'clamp(10px, 1.5vw, 13px)', color: '#374151', lineHeight: '1.8' }}>
+              <p style={{ fontSize: '15px', fontWeight: 'bold', color: '#14532d', margin: '0 0 14px 0' }}>
+                {certConfig.trainingName}
+              </p>
+              <p style={{ fontSize: '12px', color: '#374151', lineHeight: '1.8' }}>
                 {certConfig.bodyText.split('\n').map((line, i, arr) => (
                   <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
                 ))}
               </p>
             </div>
 
-            {/* 修了番号・修了日・有効期限 */}
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: expiryDate ? '6%' : '10%', borderTop: '1px solid #d1fae5', paddingTop: '12px' }}>
+            {/* 修了番号・修了日・有効期限（ラベルと値を3カラムで水平揃え） */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: expiryDate ? '6%' : '10%', borderTop: '1px solid #d1fae5', paddingTop: '12px' }}>
               <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: '9px', color: '#9ca3af', marginBottom: '2px' }}>修了番号</p>
-                <p style={{ fontSize: 'clamp(10px, 1.4vw, 12px)', fontFamily: 'monospace', color: '#374151', fontWeight: 'bold', margin: 0 }}>{certNumber}</p>
+                <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '2px' }}>修了番号</p>
+                <p style={{ fontSize: '12px', fontFamily: 'monospace', color: '#374151', fontWeight: 'bold', margin: 0 }}>{certNumber}</p>
               </div>
               <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: '9px', color: '#9ca3af', marginBottom: '2px' }}>修了日</p>
-                <p style={{ fontSize: 'clamp(10px, 1.5vw, 13px)', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>{completionDate}</p>
+                <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '2px' }}>修了日</p>
+                <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>{completionDate}</p>
               </div>
               {expiryDate && (
                 <div style={{ textAlign: 'center' }}>
-                  <p style={{ fontSize: '9px', color: '#9ca3af', marginBottom: '2px' }}>有効期限</p>
-                  <p style={{ fontSize: 'clamp(10px, 1.5vw, 13px)', fontWeight: 'bold', color: '#b45309', margin: 0 }}>{expiryDate}</p>
-                  <p style={{ fontSize: '8px', color: '#d97706', margin: '2px 0 0 0' }}>修了日より1年間</p>
+                  <p style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '2px' }}>有効期限</p>
+                  <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#b45309', margin: 0 }}>{expiryDate}</p>
+                  <p style={{ fontSize: '9px', color: '#d97706', margin: '2px 0 0 0' }}>{EXPIRY_CAPTION}</p>
                 </div>
               )}
             </div>
 
             {/* 発行者 */}
             <div style={{ textAlign: 'center', borderTop: '1px solid #d1fae5', paddingTop: '12px' }}>
-              <p style={{ fontSize: 'clamp(11px, 1.8vw, 15px)', fontWeight: 'bold', color: '#14532d', letterSpacing: '0.05em', margin: 0 }}>
+              <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#14532d', letterSpacing: '0.05em', margin: 0 }}>
                 公益社団法人全国学習塾協会（JJA）
               </p>
               <p style={{ fontSize: '9px', color: '#9ca3af', marginTop: '2px' }}>Japan Juku Association</p>
@@ -243,6 +242,12 @@ export default function CertificatePage() {
           {/* 下部帯 */}
           <div style={{ height: '14px', background: '#166534', flexShrink: 0 }} />
         </div>
+        </div>{/* /拡大トリガー */}
+
+        {/* スマホでのみ表示：「タップで拡大」ヒント */}
+        <p className="sm:hidden text-center text-xs text-gray-400 mt-1 mb-4">
+          ↑ 修了証をタップで拡大表示
+        </p>
 
         {/* ボタン群 */}
         <div className="space-y-3">
@@ -260,6 +265,98 @@ export default function CertificatePage() {
             {isReissue ? '戻る' : 'トップへ戻る'}
           </button>
         </div>
+
+        {/* ========== 拡大プレビューモーダル ========== */}
+        {zoomOpen && (
+          <div
+            onClick={() => setZoomOpen(false)}
+            className="fixed inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-4 overflow-y-auto cursor-zoom-out"
+            role="dialog"
+            aria-label="修了証の拡大表示"
+          >
+            <button
+              onClick={(e) => { e.stopPropagation(); setZoomOpen(false); }}
+              className="absolute top-3 right-3 text-white text-3xl leading-none w-10 h-10 rounded-full hover:bg-white/10 transition-colors"
+              aria-label="閉じる"
+            >
+              ×
+            </button>
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-lg overflow-hidden shadow-2xl max-w-full"
+              style={{ width: 'min(95vw, 600px)' }}
+            >
+              {/* モーダル内のミニ修了証（簡易表示・印鑑代わり） */}
+              <div
+                className="bg-white border-2 border-green-700 overflow-hidden"
+                style={{
+                  fontFamily: '"Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", serif',
+                  aspectRatio: '210 / 297',
+                  width: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                <div style={{ height: '14px', background: '#166534', flexShrink: 0 }} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '5% 8%' }}>
+                  <div style={{ textAlign: 'center', paddingTop: '2%' }}>
+                    <h2 style={{ fontSize: 'clamp(28px, 6vw, 44px)', fontWeight: 'bold', color: '#14532d', letterSpacing: '0.35em', margin: 0 }}>
+                      {certConfig.certTitle}
+                    </h2>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontSize: 'clamp(15px, 3vw, 22px)', color: '#1f2937', fontWeight: 'bold', marginBottom: '4px' }}>
+                      {trainee.companyName}
+                    </p>
+                    <p style={{ fontSize: 'clamp(13px, 2.4vw, 18px)', color: '#374151', fontWeight: 'bold', marginBottom: '14px' }}>
+                      {trainee.classroomName}
+                    </p>
+                    <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: '8px', borderBottom: '2px solid #14532d', paddingBottom: '4px', paddingLeft: '32px', paddingRight: '32px' }}>
+                      <p style={{ fontSize: 'clamp(26px, 6vw, 42px)', fontWeight: 'bold', color: '#111827', margin: 0, letterSpacing: '0.1em' }}>
+                        {trainee.fullName}
+                      </p>
+                      <span style={{ fontSize: 'clamp(13px, 2.4vw, 19px)', color: '#374151', fontWeight: 'normal' }}>殿</span>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontSize: 'clamp(13px, 2.6vw, 17px)', fontWeight: 'bold', color: '#14532d', margin: '0 0 8px 0' }}>
+                      {certConfig.trainingName}
+                    </p>
+                    <p style={{ fontSize: 'clamp(11px, 2vw, 14px)', color: '#374151', lineHeight: '1.8' }}>
+                      {certConfig.bodyText.split('\n').map((line, i, arr) => (
+                        <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
+                      ))}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: expiryDate ? '6%' : '10%', borderTop: '1px solid #d1fae5', paddingTop: '12px' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <p style={{ fontSize: 'clamp(10px, 1.8vw, 12px)', color: '#9ca3af', marginBottom: '2px' }}>修了番号</p>
+                      <p style={{ fontSize: 'clamp(11px, 2vw, 14px)', fontFamily: 'monospace', color: '#374151', fontWeight: 'bold', margin: 0 }}>{certNumber}</p>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <p style={{ fontSize: 'clamp(10px, 1.8vw, 12px)', color: '#9ca3af', marginBottom: '2px' }}>修了日</p>
+                      <p style={{ fontSize: 'clamp(12px, 2.2vw, 15px)', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>{completionDate}</p>
+                    </div>
+                    {expiryDate && (
+                      <div style={{ textAlign: 'center' }}>
+                        <p style={{ fontSize: 'clamp(10px, 1.8vw, 12px)', color: '#9ca3af', marginBottom: '2px' }}>有効期限</p>
+                        <p style={{ fontSize: 'clamp(12px, 2.2vw, 15px)', fontWeight: 'bold', color: '#b45309', margin: 0 }}>{expiryDate}</p>
+                        <p style={{ fontSize: 'clamp(9px, 1.5vw, 11px)', color: '#d97706', margin: '2px 0 0 0' }}>{EXPIRY_CAPTION}</p>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ textAlign: 'center', borderTop: '1px solid #d1fae5', paddingTop: '12px' }}>
+                    <p style={{ fontSize: 'clamp(13px, 2.4vw, 17px)', fontWeight: 'bold', color: '#14532d', margin: 0 }}>
+                      公益社団法人全国学習塾協会（JJA）
+                    </p>
+                  </div>
+                </div>
+                <div style={{ height: '14px', background: '#166534', flexShrink: 0 }} />
+              </div>
+            </div>
+            <p className="text-white/70 text-xs mt-3">画面の外側をタップで閉じる</p>
+          </div>
+        )}
 
         <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4 text-xs text-gray-500">
           <p className="font-semibold mb-1 text-gray-700">PDF出力について</p>

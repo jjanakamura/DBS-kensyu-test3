@@ -1,6 +1,5 @@
 import crypto from 'crypto';
-import fs from 'fs';
-import { getDataPath } from './dataPath';
+import { getOperator, getClassroom } from './db';
 
 /**
  * 認証ユーティリティ（HMAC ベースのステートレストークン）
@@ -35,12 +34,31 @@ function checkToken(token, secret) {
 }
 
 // ─── 管理者 ────────────────────────────────────────────────────────
+/**
+ * ⚠ ADMIN_PASSWORD は必ず環境変数で設定すること（コード内フォールバック禁止）
+ *    Vercel: Settings → Environment Variables → ADMIN_PASSWORD
+ *    ローカル: .env.local に ADMIN_PASSWORD=... を記述
+ */
+function getAdminSecret() {
+  const pw = process.env.ADMIN_PASSWORD;
+  if (!pw) {
+    // ログには値を出さない。原因のみ。
+    console.error('[auth] ADMIN_PASSWORD が未設定です。管理者ログインを拒否します。');
+    return null;
+  }
+  return pw;
+}
+
 export function generateAdminToken() {
-  return makeToken(process.env.ADMIN_PASSWORD || 'admin2024');
+  const secret = getAdminSecret();
+  if (!secret) return null;
+  return makeToken(secret);
 }
 
 export function verifyAdminToken(token) {
-  return checkToken(token, process.env.ADMIN_PASSWORD || 'admin2024');
+  const secret = getAdminSecret();
+  if (!secret) return false;
+  return checkToken(token, secret);
 }
 
 // ─── 事業者 ────────────────────────────────────────────────────────
@@ -48,13 +66,10 @@ export function generateOperatorToken(adminPassword) {
   return makeToken(adminPassword);
 }
 
-export function verifyOperatorToken(token, operatorCode) {
+export async function verifyOperatorToken(token, operatorCode) {
   if (!token || !operatorCode) return false;
   try {
-    const ops = JSON.parse(fs.readFileSync(getDataPath('operators.json'), 'utf-8') || '[]');
-    const op = ops.find(
-      (o) => o.operatorCode?.toUpperCase() === String(operatorCode).toUpperCase()
-    );
+    const op = await getOperator(operatorCode);
     return op?.adminPassword ? checkToken(token, op.adminPassword) : false;
   } catch {
     return false;
@@ -68,15 +83,12 @@ export function generateClassroomToken(classroomPassword) {
 
 /**
  * 教室トークンを検証し、所属 operatorCode を返す
- * @returns {string|null} operatorCode（検証失敗時は null）
+ * @returns {Promise<string|null>} operatorCode（検証失敗時は null）
  */
-export function verifyClassroomToken(token, classroomCode) {
+export async function verifyClassroomToken(token, classroomCode) {
   if (!token || !classroomCode) return null;
   try {
-    const cls = JSON.parse(fs.readFileSync(getDataPath('classrooms.json'), 'utf-8') || '[]');
-    const c = cls.find(
-      (c) => c.classroomCode?.toUpperCase() === String(classroomCode).toUpperCase()
-    );
+    const c = await getClassroom(classroomCode);
     if (!c) return null;
     const pw = c.classroomPassword || c.classroomCode;
     return checkToken(token, pw) ? String(c.operatorCode).toUpperCase() : null;
@@ -97,7 +109,7 @@ export function verifyClassroomToken(token, classroomCode) {
  * @returns {{ scope: 'admin'|'operator'|'classroom', operatorCode: string|null, classroomCode: string|null } | null}
  *   null の場合はすでに 401 レスポンスを返済み
  */
-export function getAuthScope(req, res) {
+export async function getAuthScope(req, res) {
   // 管理者
   const adminToken = req.headers['x-admin-token'] || '';
   if (adminToken && verifyAdminToken(adminToken)) {
@@ -107,7 +119,7 @@ export function getAuthScope(req, res) {
   // 事業者
   const opToken = req.headers['x-operator-token'] || '';
   const opCode  = req.headers['x-operator-code']  || '';
-  if (opToken && opCode && verifyOperatorToken(opToken, opCode)) {
+  if (opToken && opCode && (await verifyOperatorToken(opToken, opCode))) {
     return {
       scope: 'operator',
       operatorCode: String(opCode).toUpperCase(),
@@ -119,7 +131,7 @@ export function getAuthScope(req, res) {
   const clsToken = req.headers['x-classroom-token'] || '';
   const clsCode  = req.headers['x-classroom-code']  || '';
   if (clsToken && clsCode) {
-    const opCodeFromCls = verifyClassroomToken(clsToken, clsCode);
+    const opCodeFromCls = await verifyClassroomToken(clsToken, clsCode);
     if (opCodeFromCls) {
       return {
         scope: 'classroom',

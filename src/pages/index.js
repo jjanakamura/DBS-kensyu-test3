@@ -8,7 +8,7 @@ export default function Home() {
   const router = useRouter();
 
   const steps = [
-    { num: '1', label: '基本情報の入力', desc: '会員コード・教室名・氏名・メールアドレスを入力' },
+    { num: '1', label: '基本情報の入力', desc: '事業者コード・教室名・氏名を入力' },
     { num: '2', label: '研修動画の視聴', desc: '日本版DBSの概要と実務対応について学びます' },
     { num: '3', label: '確認テストの受験', desc: '全20問 — 16問以上正解（80%）で合格' },
     { num: '4', label: '修了証の受領', desc: '合格者には修了証を発行します' },
